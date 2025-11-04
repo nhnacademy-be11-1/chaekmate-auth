@@ -20,7 +20,6 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class JwtTokenProvider {
 
-    private static final String CLAIM_MEMBER_ID = "memberId";
     private static final String CLAIM_TYPE = "type";
     private static final String TYPE_REFRESH = "refresh";
 
@@ -32,26 +31,24 @@ public class JwtTokenProvider {
         return Keys.hmacShaKeyFor(jwtProperties.getSecret().getBytes(StandardCharsets.UTF_8));
     }
 
-    public String createAccessToken(String userId, Long memberId) {
+    public String createAccessToken(Long memberId) {
         Date now = new Date();
         Date expiration = new Date(now.getTime() + jwtProperties.getAccess().getExp() * 1000); // 밀리초니까 1000곱해서 초로 맞춤
 
         return Jwts.builder()
-                .subject(userId)
-                .claim(CLAIM_MEMBER_ID, memberId)
+                .subject(String.valueOf(memberId))
                 .issuedAt(now)
                 .expiration(expiration)
                 .signWith(getSecretKey())
                 .compact();
     }
 
-    public String createRefreshToken(String userId, Long memberId) {
+    public String createRefreshToken(Long memberId) {
         Date now = new Date();
         Date expiration = new Date(now.getTime() + jwtProperties.getRefresh().getExp() * 1000);
 
         return Jwts.builder()
-                .subject(userId)
-                .claim(CLAIM_MEMBER_ID, memberId)
+                .subject(String.valueOf(memberId))
                 .claim(CLAIM_TYPE, TYPE_REFRESH)
                 .issuedAt(now)
                 .expiration(expiration)
@@ -59,9 +56,9 @@ public class JwtTokenProvider {
                 .compact();
     }
 
-    public TokenPair createTokenPair(String userId, Long memberId) {
-        String accessToken = createAccessToken(userId, memberId);
-        String refreshToken = createRefreshToken(userId, memberId);
+    public TokenPair createTokenPair(Long memberId) {
+        String accessToken = createAccessToken(memberId);
+        String refreshToken = createRefreshToken(memberId);
         return new TokenPair(accessToken, refreshToken);
     }
 
@@ -101,14 +98,9 @@ public class JwtTokenProvider {
         }
     }
 
-    public String getUserIdFromToken(String token) {
-        Claims claims = parseToken(token);
-        return claims.getSubject();
-    }
-
     public Long getMemberIdFromToken(String token) {
         Claims claims = parseToken(token);
-        return claims.get(CLAIM_MEMBER_ID, Long.class);
+        return Long.parseLong(claims.getSubject());
     }
 
     public boolean isRefreshToken(String token) {

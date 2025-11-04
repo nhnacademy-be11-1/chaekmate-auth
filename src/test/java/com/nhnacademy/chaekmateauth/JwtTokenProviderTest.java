@@ -70,8 +70,7 @@ class JwtTokenProviderTest {
         Date expiredAt = new Date(now.getTime() - 1000);
 
         return Jwts.builder()
-                .subject("testUser")
-                .claim("memberId", null)
+                .subject("123")
                 .issuedAt(new Date(now.getTime() - 3600000))
                 .expiration(expiredAt)
                 .signWith(secretKey)
@@ -96,10 +95,9 @@ class JwtTokenProviderTest {
 
     @Test
     void Access_토큰_생성_성공() {
-        String userId = "testUser";
         Long memberId = 123L;
 
-        String token = jwtTokenProvider.createAccessToken(userId, memberId);
+        String token = jwtTokenProvider.createAccessToken(memberId);
 
         assertThat(token)
                 .isNotNull()
@@ -107,41 +105,26 @@ class JwtTokenProviderTest {
 
         Claims claims = jwtTokenProvider.parseToken(token);
 
-        assertThat(claims.getSubject()).isEqualTo(userId);
-        assertThat(claims.get("memberId", Long.class)).isEqualTo(memberId);
+        assertThat(claims.getSubject()).isEqualTo(String.valueOf(memberId));
         assertThat(claims.getExpiration()).isNotNull();
     }
 
     @Test
-    void Access_토큰_생성_memberId_null() {
-        String userId = "testUser";
-
-        String token = jwtTokenProvider.createAccessToken(userId, null);
-        Claims claims = jwtTokenProvider.parseToken(token);
-
-        assertThat(claims.getSubject()).isEqualTo(userId);
-        assertThat(claims.get("memberId", Long.class)).isNull();
-    }
-
-    @Test
     void Refresh_토큰_생성_성공() {
-        String userId = "testUser";
         Long memberId = 456L;
 
-        String token = jwtTokenProvider.createRefreshToken(userId, memberId);
+        String token = jwtTokenProvider.createRefreshToken(memberId);
         Claims claims = jwtTokenProvider.parseToken(token);
 
-        assertThat(claims.getSubject()).isEqualTo(userId);
-        assertThat(claims.get("memberId", Long.class)).isEqualTo(memberId);
+        assertThat(claims.getSubject()).isEqualTo(String.valueOf(memberId));
         assertThat(claims.get("type", String.class)).isEqualTo("refresh");
     }
 
     @Test
     void 토큰_페어_생성_성공() {
-        String userId = "testUser";
         Long memberId = 789L;
 
-        TokenPair tokenPair = jwtTokenProvider.createTokenPair(userId, memberId);
+        TokenPair tokenPair = jwtTokenProvider.createTokenPair(memberId);
 
         assertThat(tokenPair.accessToken()).isNotEmpty();
         assertThat(tokenPair.refreshToken()).isNotEmpty();
@@ -149,16 +132,15 @@ class JwtTokenProviderTest {
         Claims accessClaims = jwtTokenProvider.parseToken(tokenPair.accessToken());
         Claims refreshClaims = jwtTokenProvider.parseToken(tokenPair.refreshToken());
 
-        assertThat(accessClaims.getSubject()).isEqualTo(userId);
-        assertThat(refreshClaims.getSubject()).isEqualTo(userId);
+        assertThat(accessClaims.getSubject()).isEqualTo(String.valueOf(memberId));
+        assertThat(refreshClaims.getSubject()).isEqualTo(String.valueOf(memberId));
         assertThat(refreshClaims.get("type", String.class)).isEqualTo("refresh");
     }
 
     @Test
     void 유효한_토큰_검증_성공() {
-        String userId = "testUser";
         Long memberId = 123L;
-        String token = jwtTokenProvider.createAccessToken(userId, memberId);
+        String token = jwtTokenProvider.createAccessToken(memberId);
 
         boolean isValid = jwtTokenProvider.validateToken(token);
 
@@ -185,14 +167,12 @@ class JwtTokenProviderTest {
 
     @Test
     void 토큰_파싱_성공() {
-        String userId = "testUser";
         Long memberId = 123L;
-        String token = jwtTokenProvider.createAccessToken(userId, memberId);
+        String token = jwtTokenProvider.createAccessToken(memberId);
 
         Claims claims = jwtTokenProvider.parseToken(token);
 
-        assertThat(claims.getSubject()).isEqualTo(userId);
-        assertThat(claims.get("memberId", Long.class)).isEqualTo(memberId);
+        assertThat(claims.getSubject()).isEqualTo(String.valueOf(memberId));
         assertThat(claims.getExpiration()).isNotNull();
     }
 
@@ -217,7 +197,7 @@ class JwtTokenProviderTest {
     @Test
     void 잘못된_서명의_토큰_파싱_실패() {
         JwtTokenProvider otherProvider = createOtherProvider();
-        String token = otherProvider.createAccessToken("testUser", null);
+        String token = otherProvider.createAccessToken(123L);
 
         AuthException exception = assertThrows(AuthException.class, () ->
                 jwtTokenProvider.parseToken(token));
@@ -226,28 +206,12 @@ class JwtTokenProviderTest {
     }
 
     @Test
-    void 토큰에서_userId_추출_성공() {
-        String token = jwtTokenProvider.createAccessToken("testUser", 123L);
-
-        String extractedUserId = jwtTokenProvider.getUserIdFromToken(token);
-
-        assertThat(extractedUserId).isEqualTo("testUser");
-    }
-
-    @Test
     void 토큰에서_memberId_추출_성공() {
-        String token = jwtTokenProvider.createAccessToken("testUser", 456L);
+        Long memberId = 456L;
+        String token = jwtTokenProvider.createAccessToken(memberId);
 
         Long extractedMemberId = jwtTokenProvider.getMemberIdFromToken(token);
-
-        assertThat(extractedMemberId).isEqualTo(456L);
-    }
-
-    @Test
-    void 만료된_토큰에서_userId_추출_실패() {
-        String expiredToken = createExpiredToken();
-
-        assertThrows(AuthException.class, () -> jwtTokenProvider.getUserIdFromToken(expiredToken));
+        assertThat(extractedMemberId).isEqualTo(memberId);
     }
 
     @Test
@@ -259,7 +223,8 @@ class JwtTokenProviderTest {
     @Test
     void 토큰_만료_시간_확인() {
         long beforeCreation = System.currentTimeMillis();
-        String token = jwtTokenProvider.createAccessToken("testUser", null);
+        Long memberId = 123L;
+        String token = jwtTokenProvider.createAccessToken(memberId);
 
         Claims claims = jwtTokenProvider.parseToken(token);
         Date expiration = claims.getExpiration();
@@ -272,8 +237,9 @@ class JwtTokenProviderTest {
 
     @Test
     void Refresh_토큰_만료_시간이_Access_토큰보다_김() {
-        String access = jwtTokenProvider.createAccessToken("testUser", 123L);
-        String refresh = jwtTokenProvider.createRefreshToken("testUser", 123L);
+        Long memberId = 123L;
+        String access = jwtTokenProvider.createAccessToken(memberId);
+        String refresh = jwtTokenProvider.createRefreshToken(memberId);
 
         Claims accessClaims = jwtTokenProvider.parseToken(access);
         Claims refreshClaims = jwtTokenProvider.parseToken(refresh);
@@ -283,25 +249,29 @@ class JwtTokenProviderTest {
 
     @Test
     void Refresh_토큰인지_확인_성공() {
-        String refreshTokenStr = jwtTokenProvider.createRefreshToken("testUser", 123L);
+        Long memberId = 123L;
+        String refreshTokenStr = jwtTokenProvider.createRefreshToken(memberId);
         assertThat(jwtTokenProvider.isRefreshToken(refreshTokenStr)).isTrue();
     }
 
     @Test
     void Access_토큰은_Refresh_토큰이_아님() {
-        String accessTokenStr = jwtTokenProvider.createAccessToken("testUser", 123L);
+        Long memberId = 123L;
+        String accessTokenStr = jwtTokenProvider.createAccessToken(memberId);
         assertThat(jwtTokenProvider.isRefreshToken(accessTokenStr)).isFalse();
     }
 
     @Test
     void Refresh_토큰_검증_성공() {
-        String refreshTokenStr = jwtTokenProvider.createRefreshToken("testUser", 123L);
+        Long memberId = 123L;
+        String refreshTokenStr = jwtTokenProvider.createRefreshToken(memberId);
         assertThat(jwtTokenProvider.validateRefreshToken(refreshTokenStr)).isTrue();
     }
 
     @Test
     void Access_토큰은_Refresh_토큰_검증_실패() {
-        String accessTokenStr = jwtTokenProvider.createAccessToken("testUser", 123L);
+        Long memberId = 123L;
+        String accessTokenStr = jwtTokenProvider.createAccessToken(memberId);
         assertThat(jwtTokenProvider.validateRefreshToken(accessTokenStr)).isFalse();
     }
 }

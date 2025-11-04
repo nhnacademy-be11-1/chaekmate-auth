@@ -5,12 +5,17 @@ spring:
 server:
   port: 9000
 
+#eureka:
+#  client:
+#    register-with-eureka: true
+#    fetch-registry: true
+#    service-url:
+#      defaultZone: http://chaekmate:1234@localhost:8761/eureka
+
+#테스트용
 eureka:
   client:
-    register-with-eureka: true
-    fetch-registry: true
-    service-url:
-      defaultZone: http://chaekmate:1234@localhost:8761/eureka
+    enabled: false
 
   instance:
     prefer-ip-address: true
@@ -26,3 +31,6 @@ jwt:
     exp: ${ACCESS_TOKEN_EXPIRED_AT:3600}
   refresh:
     exp: ${REFRESH_TOKEN_EXPIRED_AT:604800}
+chaekmate:
+  core:
+    url: http://localhost:9100

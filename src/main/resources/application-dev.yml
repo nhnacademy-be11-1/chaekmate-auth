@@ -3,7 +3,7 @@ server:
   port: 9000
 
 # Eureka Server URL
-eureka:
-  client:
-    service-url:
-      defaultZone: http://chaekmate:1234@localhost:8761/eureka
+#eureka:
+#  client:
+#    service-url:
+#      defaultZone: http://chaekmate:1234@localhost:8761/eureka
