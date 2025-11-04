@@ -1,0 +1,94 @@
+name: Auth CI-CD with Maven
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    env:
+      SPRING_PROFILES_ACTIVE: prod
+      DOMAIN: ${{ secrets.DOMAIN_NAME }}
+      PORT: ${{ secrets.PORT_NUMBER }}
+      REDIS_HOST: ${{ secrets.REDIS_HOST }}
+      REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+      REDIS_PORT: ${{ secrets.REDIS_PORT }}
+      EUREKA_URL_PROD: ${{ secrets.EUREKA_URL_PROD }}
+
+    steps:
+      # Step.1 코드 체크아웃
+      - uses: actions/checkout@v3
+
+      # Step.2 JDK 설정
+      - name: Set up JDK 21
+        uses: actions/setup-java@v3
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      # Step.3 SonarQube Caching
+      - name: Cache SonarQube packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+
+      # Step.4 Maven Caching
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+
+      # Step.5 SonarQube Analysis + Maven verify
+      - name: Build and Analyze with SonarQube
+        run: |
+          mvn -B verify sonar:sonar \
+            -Dsonar.projectKey=chaekmate-auth \
+            -Dsonar.projectName="chaekmate-auth" \
+            -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }} \
+            -Dsonar.login=${{ secrets.SONAR_TOKEN }}  \
+            -Dsonar.coverage.jacoco.xmlReportPaths=api/target/site/jacoco/jacoco.xml
+
+
+      # Step.6 JAR 파일 이름 변경
+      - name: Rename JAR File
+        run: |
+          TIMESTAMP=$(TZ="Asia/Seoul" date +%Y%m%d-%H%M%S)
+          NEW_JAR_NAME="${DOMAIN}-${TIMESTAMP}.jar"
+          mv target/*.jar target/$NEW_JAR_NAME
+          echo "NEW_JAR_NAME=$NEW_JAR_NAME" >> $GITHUB_ENV
+
+      # Step.7 서버 도메인별 폴더로 JAR 파일 업로드
+      - name: Upload file to Server temp Folder
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_IP }}
+          username: ${{ secrets.SSH_ID }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          port: ${{ secrets.SSH_PORT }}
+          source: "target/${{ env.NEW_JAR_NAME }}"
+          target: "/home/backend/be11-team1/${{ env.DOMAIN }}/"
+          strip_components: 1 # 폴더 구조 무시하고 파일만 업로드
+          rm: false # 기존 파일 (중복 파일) 존재 시 덮어쓰기
+
+      # Step.8 서버: startup.sh 실행
+      - name: Execute startup script
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SSH_IP }}
+          username: ${{ secrets.SSH_ID }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+            export DOMAIN="${{ env.DOMAIN }}"
+            export PORT="${{ env.PORT }}"
+            bash -lc ./startup.sh
