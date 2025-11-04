@@ -23,6 +23,6 @@ management:
 jwt:
   secret: ${JWT_SECRET_KEY}
   access:
-    exp: ${ACCESS_TOKEN_EXPIRED_AT:3600} # ?? ?????
+    exp: ${ACCESS_TOKEN_EXPIRED_AT:3600}
   refresh:
-    exp: ${REFRESH_TOKEN_EXPIRED_AT:604800} # ?? 7??
+    exp: ${REFRESH_TOKEN_EXPIRED_AT:604800}
