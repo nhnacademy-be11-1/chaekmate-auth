@@ -283,25 +283,25 @@ class JwtTokenProviderTest {
 
     @Test
     void Refresh_토큰인지_확인_성공() {
-        String refreshToken = jwtTokenProvider.createRefreshToken("testUser", 123L);
-        assertThat(jwtTokenProvider.isRefreshToken(refreshToken)).isTrue();
+        String refreshTokenStr = jwtTokenProvider.createRefreshToken("testUser", 123L);
+        assertThat(jwtTokenProvider.isRefreshToken(refreshTokenStr)).isTrue();
     }
 
     @Test
     void Access_토큰은_Refresh_토큰이_아님() {
-        String accessToken = jwtTokenProvider.createAccessToken("testUser", 123L);
-        assertThat(jwtTokenProvider.isRefreshToken(accessToken)).isFalse();
+        String accessTokenStr = jwtTokenProvider.createAccessToken("testUser", 123L);
+        assertThat(jwtTokenProvider.isRefreshToken(accessTokenStr)).isFalse();
     }
 
     @Test
     void Refresh_토큰_검증_성공() {
-        String refreshToken = jwtTokenProvider.createRefreshToken("testUser", 123L);
-        assertThat(jwtTokenProvider.validateRefreshToken(refreshToken)).isTrue();
+        String refreshTokenStr = jwtTokenProvider.createRefreshToken("testUser", 123L);
+        assertThat(jwtTokenProvider.validateRefreshToken(refreshTokenStr)).isTrue();
     }
 
     @Test
     void Access_토큰은_Refresh_토큰_검증_실패() {
-        String accessToken = jwtTokenProvider.createAccessToken("testUser", 123L);
-        assertThat(jwtTokenProvider.validateRefreshToken(accessToken)).isFalse();
+        String accessTokenStr = jwtTokenProvider.createAccessToken("testUser", 123L);
+        assertThat(jwtTokenProvider.validateRefreshToken(accessTokenStr)).isFalse();
     }
 }
