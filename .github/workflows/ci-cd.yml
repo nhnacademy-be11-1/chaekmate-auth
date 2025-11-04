@@ -15,6 +15,9 @@ jobs:
       SPRING_PROFILES_ACTIVE: prod
       DOMAIN: ${{ secrets.DOMAIN_NAME }}
       PORT: ${{ secrets.PORT_NUMBER }}
+      REDIS_HOST: ${{ secrets.REDIS_HOST }}
+      REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+      REDIS_PORT: ${{ secrets.REDIS_PORT }}
       EUREKA_URL_PROD: ${{ secrets.EUREKA_URL_PROD }}
 
     steps:
