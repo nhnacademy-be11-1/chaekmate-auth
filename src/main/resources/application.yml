@@ -1,10 +1,25 @@
 spring:
   application:
     name: chaekmate-auth
-  profiles:
-    active: dev
+
 server:
   port: 9000
+
+eureka:
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: http://chaekmate:1234@localhost:8761/eureka
+
+  instance:
+    prefer-ip-address: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info
 jwt:
   secret: ${JWT_SECRET_KEY}
   access:
