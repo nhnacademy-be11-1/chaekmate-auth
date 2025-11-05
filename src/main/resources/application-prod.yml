@@ -5,7 +5,7 @@ server:
   port: ${PORT_NUMBER}
 
 # Eureka Server URL
-eureka:
-  client:
-    service-url:
-      defaultZone: ${EUREKA_URL_PROD}
+#eureka:
+#  client:
+#    service-url:
+#      defaultZone: ${EUREKA_URL_PROD}

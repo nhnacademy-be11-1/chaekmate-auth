@@ -12,6 +12,11 @@ eureka:
     service-url:
       defaultZone: http://chaekmate:1234@localhost:8761/eureka
 
+#테스트용
+#eureka:
+#  client:
+#    enabled: false
+
   instance:
     prefer-ip-address: true
 
@@ -20,3 +25,12 @@ management:
     web:
       exposure:
         include: health, info
+jwt:
+  secret: ${JWT_SECRET_KEY}
+  access:
+    exp: ${ACCESS_TOKEN_EXPIRED_AT:3600}
+  refresh:
+    exp: ${REFRESH_TOKEN_EXPIRED_AT:604800}
+chaekmate:
+  core:
+    url: http://localhost:9100
