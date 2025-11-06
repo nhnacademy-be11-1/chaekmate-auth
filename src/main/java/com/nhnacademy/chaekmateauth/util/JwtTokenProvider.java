@@ -1,6 +1,6 @@
 package com.nhnacademy.chaekmateauth.util;
 
-import com.nhnacademy.chaekmateauth.config.JwtProperties;
+import com.nhnacademy.chaekmateauth.common.properties.JwtProperties;
 import com.nhnacademy.chaekmateauth.dto.TokenPair;
 import com.nhnacademy.chaekmateauth.exception.AuthErrorCode;
 import com.nhnacademy.chaekmateauth.exception.AuthException;
@@ -118,5 +118,13 @@ public class JwtTokenProvider {
             return false;
         }
         return isRefreshToken(token);
+    }
+
+    public Long getAccessTokenExpiration() {
+        return jwtProperties.getAccess().getExp();
+    }
+
+    public Long getRefreshTokenExpiration() {
+        return jwtProperties.getRefresh().getExp();
     }
 }
