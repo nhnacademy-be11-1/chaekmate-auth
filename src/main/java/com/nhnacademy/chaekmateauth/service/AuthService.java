@@ -28,6 +28,9 @@ public class AuthService {
             throw new AuthException(AuthErrorCode.INVALID_CREDENTIALS);
         }
 
+        member.updateLastLoginAt(); // 나중에 휴면 회원 처리 시 필요, 우선 만들어놈
+        memberRepository.save(member);
+
         return jwtTokenProvider.createTokenPair(member.getId());
     }
 }
