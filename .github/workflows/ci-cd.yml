@@ -14,7 +14,7 @@ jobs:
     env:
       SPRING_PROFILES_ACTIVE: prod
       DOMAIN: ${{ secrets.DOMAIN_NAME }}
-      PORT: ${{ secrets.PORT_NUMBER }}
+      PORT_NUMBER: ${{ secrets.PORT_NUMBER }}
       REDIS_HOST: ${{ secrets.REDIS_HOST }}
       REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
       REDIS_PORT: ${{ secrets.REDIS_PORT }}
