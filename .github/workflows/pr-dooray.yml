@@ -1,0 +1,21 @@
+name: PR Notify to Dooray
+
+on:
+  pull_request:
+    types: [ opened, reopened, ready_for_review ]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send message to Dooray
+        shell: bash
+        env:
+          DOORAY_URL: ${{ secrets.DOORAY_URL }}
+        run: |
+          curl -X POST "$DOORAY_URL" \
+            -H "Content-Type: application/json" \
+            --data-raw '{
+              "botName": "GitHub PR Bot",
+              "text": "🚀 새로운 PR이 생성되었습니다!\n제목: ${{ github.event.pull_request.title }}\n작성자: ${{ github.actor }}\n링크: ${{ github.event.pull_request.html_url }}"
+            }'
