@@ -31,7 +31,7 @@ public class AuthService {
             if (passwordEncoder.matches(request.password(), member.getPassword())) {
                 member.updateLastLoginAt();
                 memberRepository.save(member);
-                return jwtTokenProvider.createTokenPair(member.getId());
+                return jwtTokenProvider.createTokenPair(member.getId(), JwtTokenProvider.getTypeMember());
             }
         }
 
@@ -43,7 +43,7 @@ public class AuthService {
         if (adminOpt.isPresent()) {
             Admin admin = adminOpt.get();
             if (passwordEncoder.matches(request.password(), admin.getAdminPassword())) {
-                return jwtTokenProvider.createTokenPair(admin.getId());
+                return jwtTokenProvider.createTokenPair(admin.getId(), JwtTokenProvider.getTypeAdmin());
             }
         }
 

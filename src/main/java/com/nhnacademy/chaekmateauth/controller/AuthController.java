@@ -71,12 +71,14 @@ public class AuthController {
             @CookieValue("accessToken") String token) {
         // 토큰 검증 및 memberId 추출
         Long id = jwtTokenProvider.getMemberIdFromToken(token);
+        // userType도 추출
+        String userType = jwtTokenProvider.getUserTypeFromToken(token);
 
         // DB에서 회원 정보 조회
         // member, admin 테이블 다 확인
-        Optional<Member> memberOpt = memberRepository.findById(id);
-        if (memberOpt.isPresent()) {
-            Member member = memberOpt.get();
+        if (JwtTokenProvider.getTypeMember().equals(userType)) {
+            Member member = memberRepository.findById(id)
+                    .orElseThrow(() -> new AuthException(AuthErrorCode.MEMBER_NOT_FOUND));
             String role = adminRepository.existsById(id) ? "ADMIN" : "USER"; // admin테이블에 있으면 admin, 아니면 user
             return ResponseEntity.ok(new MemberInfoResponse(
                     member.getId(),
@@ -84,10 +86,9 @@ public class AuthController {
                     role
             ));
         }
-
-        Optional<Admin> adminOpt = adminRepository.findById(id);
-        if (adminOpt.isPresent()) {
-            Admin admin = adminOpt.get();
+        else if (JwtTokenProvider.getTypeAdmin().equals(userType)) {
+            Admin admin = adminRepository.findById(id)
+                    .orElseThrow(() -> new AuthException(AuthErrorCode.MEMBER_NOT_FOUND));
             return ResponseEntity.ok(new MemberInfoResponse(
                     admin.getId(),
                     "admin",
