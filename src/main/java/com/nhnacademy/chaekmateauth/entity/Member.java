@@ -19,7 +19,6 @@ import org.hibernate.annotations.SQLRestriction;
 @Table(name = "member")
 @SQLRestriction("deleted_at is null")
 @NoArgsConstructor(access = PROTECTED)
-@SQLDelete(sql = "UPDATE member SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?")
 @Entity
 public class Member {
 
@@ -33,8 +32,11 @@ public class Member {
     @Column(length = 100, nullable = false)
     private String password;
 
-    @Column(name = "deleted_at")
-    private LocalDateTime deletedAt;
+    @Column(length = 50, nullable = false)
+    private String name;
+
+//    @Column(name = "deleted_at")
+//    private LocalDateTime deletedAt;
 
     @Column(name = "last_login_at")
     private LocalDateTime lastLoginAt;
