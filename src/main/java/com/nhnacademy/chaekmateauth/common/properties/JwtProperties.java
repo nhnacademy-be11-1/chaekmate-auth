@@ -1,4 +1,4 @@
-package com.nhnacademy.chaekmateauth.config;
+package com.nhnacademy.chaekmateauth.common.properties;
 
 import lombok.Getter;
 import lombok.Setter;

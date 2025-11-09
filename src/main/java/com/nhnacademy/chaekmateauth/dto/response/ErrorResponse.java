@@ -1,4 +1,4 @@
-package com.nhnacademy.chaekmateauth.dto;
+package com.nhnacademy.chaekmateauth.dto.response;
 
 import com.nhnacademy.chaekmateauth.exception.BaseErrorCode;
 import lombok.Getter;

@@ -1,6 +1,6 @@
 package com.nhnacademy.chaekmateauth.exception;
 
-import com.nhnacademy.chaekmateauth.dto.ErrorResponse;
+import com.nhnacademy.chaekmateauth.dto.response.ErrorResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;

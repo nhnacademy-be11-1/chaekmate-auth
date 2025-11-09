@@ -4,6 +4,33 @@
 server:
   port: ${PORT_NUMBER}
 
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://${DB_HOST}:${DB_PORT}/${DB_NAME}?characterEncoding=UTF-8
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+
+    # DBCP2 설정 (커넥션 풀)
+    type: org.apache.commons.dbcp2.BasicDataSource
+    dbcp2:
+      max-total: 10
+      min-idle: 2
+      validation-query: SELECT 1
+      test-on-borrow: true
+
+  jpa:
+    hibernate:
+      # create , update 금지 , prod 에선 None 고려
+      ddl-auto: validate # validate 로 수정 (전체 entity  수정 후)
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: false
+        use_sql_comments: false
+        highlight_sql: false
+    open-in-view: false
+    database-platform: org.hibernate.dialect.MySQLDialect
+
 # Eureka Server URL
 #eureka:
 #  client:
