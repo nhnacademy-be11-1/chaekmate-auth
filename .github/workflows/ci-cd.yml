@@ -92,4 +92,9 @@ jobs:
           script: |
             export DOMAIN_NAME="${{ secrets.DOMAIN_NAME }}"
             export PORT_NUMBER="${{ secrets.PORT_NUMBER }}"
+            export REDIS_HOST="${{ secrets.REDIS_HOST }}"
+            export REDIS_PASSWORD="${{ secrets.REDIS_PASSWORD }}"
+            export REDIS_PORT="${{ secrets.REDIS_PORT }}"
+            export REDIS_RANGE="${{ secrets.REDIS_RANGE }}"
+            export EUREKA_URL_PROD="${{ secrets.EUREKA_URL_PROD }}"
             bash -lc ./startup.sh
