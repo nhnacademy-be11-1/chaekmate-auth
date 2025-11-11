@@ -25,6 +25,7 @@ jobs:
       REDIS_PORT: ${{ secrets.REDIS_PORT }}
       REDIS_RANGE: ${{ secrets.REDIS_RANGE }}
       EUREKA_URL_PROD: ${{ secrets.EUREKA_URL_PROD }}
+      JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
 
     steps:
       # Step.1 코드 체크아웃
@@ -107,4 +108,5 @@ jobs:
             export REDIS_PORT="${{ secrets.REDIS_PORT }}"
             export REDIS_RANGE="${{ secrets.REDIS_RANGE }}"
             export EUREKA_URL_PROD="${{ secrets.EUREKA_URL_PROD }}"
+            export JWT_SECRET_KEY="${{ secrets.JWT_SECRET_KEY }}"
             bash -lc ./startup.sh
