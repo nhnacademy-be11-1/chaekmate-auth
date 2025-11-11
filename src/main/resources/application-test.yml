@@ -1,0 +1,25 @@
+spring:
+  application:
+    name: chaekmate-auth
+
+  datasource:
+    driver-class-name: org.h2.Driver
+    url: jdbc:h2:mem:chaekmate_auth_test;MODE=MYSQL;DB_CLOSE_DELAY=-1
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    database-platform: org.hibernate.dialect.H2Dialect
+
+# 테스트 환경에서는 Eureka 비활성화
+eureka:
+  client:
+    enabled: false
+
+# JWT 설정 (테스트용 시크릿 키)
+jwt:
+  secret: chaekmatedummykeychaekmatedummykeychaekmatedummykey
+  access:
+    exp: 3600
+  refresh:
+    exp: 604800
