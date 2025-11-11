@@ -4,6 +4,7 @@ import com.nhnacademy.chaekmateauth.common.config.CookieConfig;
 import com.nhnacademy.chaekmateauth.dto.TokenPair;
 import com.nhnacademy.chaekmateauth.dto.request.LoginRequest;
 import com.nhnacademy.chaekmateauth.dto.response.LoginResponse;
+import com.nhnacademy.chaekmateauth.dto.response.LogoutResponse;
 import com.nhnacademy.chaekmateauth.dto.response.MemberInfoResponse;
 import com.nhnacademy.chaekmateauth.entity.Admin;
 import com.nhnacademy.chaekmateauth.entity.Member;
@@ -16,7 +17,6 @@ import com.nhnacademy.chaekmateauth.util.JwtTokenProvider;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import java.time.Duration;
-import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpHeaders;
@@ -97,5 +97,23 @@ public class AuthController {
         }
 
         throw new AuthException(AuthErrorCode.MEMBER_NOT_FOUND);
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<LogoutResponse> logout(
+            @CookieValue(value = "accessToken", required = false)
+            String accessToken) {
+        // Redis에서 RefreshToken을 삭제
+        if (accessToken != null && !accessToken.trim().isEmpty()) {
+            try {
+                Long memberId = jwtTokenProvider.getMemberIdFromToken(accessToken);
+                String redisKey = REFRESH_TOKEN_PREFIX + ":" + memberId;
+                redisTemplate.delete(redisKey);
+            } catch (AuthException e) {
+                // 토큰이 만료되었거나 유효하지 않아도 Redis 삭제는 시도함
+            }
+        }
+
+        return ResponseEntity.ok(new LogoutResponse("로그아웃 성공"));
     }
 }
