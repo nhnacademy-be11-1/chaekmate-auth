@@ -5,6 +5,7 @@ import com.nhnacademy.chaekmateauth.dto.TokenPair;
 import com.nhnacademy.chaekmateauth.dto.request.LoginRequest;
 import com.nhnacademy.chaekmateauth.dto.response.LoginResponse;
 import com.nhnacademy.chaekmateauth.dto.response.LogoutResponse;
+import com.nhnacademy.chaekmateauth.annotation.RequireMember;
 import com.nhnacademy.chaekmateauth.dto.response.MemberInfoResponse;
 import com.nhnacademy.chaekmateauth.entity.Admin;
 import com.nhnacademy.chaekmateauth.entity.Member;
@@ -43,9 +44,9 @@ public class AuthController {
     private final AdminRepository adminRepository;
 
     @PostMapping("/login")
-    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request,
+    public ResponseEntity<LoginResponse> memberLogin(@Valid @RequestBody LoginRequest request,
                                                HttpServletResponse response) {
-        TokenPair tokenPair = authService.login(request);
+        TokenPair tokenPair = authService.memberLogin(request);
 
         ResponseCookie accessTokenCookie = ResponseCookie.from("accessToken", tokenPair.accessToken())
                 .httpOnly(true)
@@ -66,7 +67,32 @@ public class AuthController {
         return ResponseEntity.ok(new LoginResponse("로그인 성공"));
     }
 
+    @PostMapping("/admin/login")
+    public ResponseEntity<LoginResponse> adminLogin(@Valid @RequestBody LoginRequest request,
+                                                    HttpServletResponse response) {
+        TokenPair tokenPair = authService.adminLogin(request);
+
+        ResponseCookie accessTokenCookie = ResponseCookie.from("accessToken", tokenPair.accessToken())
+                .httpOnly(true)
+                .secure(cookieConfig.isSecureCookie())
+                .path("/")
+                .maxAge(jwtTokenProvider.getAccessTokenExpiration())
+                .sameSite("Lax")
+                .build();
+
+        response.addHeader(HttpHeaders.SET_COOKIE, accessTokenCookie.toString());
+
+        Long adminId = jwtTokenProvider.getMemberIdFromToken(tokenPair.accessToken());
+        String redisKey = REFRESH_TOKEN_PREFIX + ":" + adminId;
+        long refreshExpirationMillis = jwtTokenProvider.getRefreshTokenExpiration() * 1000;
+        redisTemplate.opsForValue().set(redisKey, tokenPair.refreshToken(),
+                Duration.ofMillis(refreshExpirationMillis));
+
+        return ResponseEntity.ok(new LoginResponse("관리자 로그인 성공"));
+    }
+
     @GetMapping("/me")
+    @RequireMember
     public ResponseEntity<MemberInfoResponse> getMemberInfo(
             @CookieValue("accessToken") String token) {
         // 토큰 검증 및 memberId 추출
@@ -75,15 +101,13 @@ public class AuthController {
         String userType = jwtTokenProvider.getUserTypeFromToken(token);
 
         // DB에서 회원 정보 조회
-        // member, admin 테이블 다 확인
         if (JwtTokenProvider.getTypeMember().equals(userType)) {
             Member member = memberRepository.findById(id)
                     .orElseThrow(() -> new AuthException(AuthErrorCode.MEMBER_NOT_FOUND));
-            String role = adminRepository.existsById(id) ? "ADMIN" : "USER"; // admin테이블에 있으면 admin, 아니면 user
             return ResponseEntity.ok(new MemberInfoResponse(
                     member.getId(),
                     member.getName(),
-                    role
+                    "USER"
             ));
         }
         else if (JwtTokenProvider.getTypeAdmin().equals(userType)) {
@@ -100,6 +124,7 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
+    @RequireMember
     public ResponseEntity<LogoutResponse> logout(
             @CookieValue(value = "accessToken", required = false)
             String accessToken) {

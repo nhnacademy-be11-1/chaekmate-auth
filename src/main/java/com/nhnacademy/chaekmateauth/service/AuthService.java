@@ -24,7 +24,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final AdminRepository adminRepository;
 
-    public TokenPair login(LoginRequest request) {
+    public TokenPair memberLogin(LoginRequest request) {
         Optional<Member> memberOpt = memberRepository.findByLoginId(request.loginId());
         if (memberOpt.isPresent()) {
             Member member = memberOpt.get();
@@ -34,11 +34,14 @@ public class AuthService {
                 return jwtTokenProvider.createTokenPair(member.getId(), JwtTokenProvider.getTypeMember());
             }
         }
+        throw new AuthException(AuthErrorCode.INVALID_CREDENTIALS);
+    }
 
         // 3개월 지나서 휴면해제 인증 필요
         //if(){
             // dooray message sender로 메시지 보내기
         //}
+    public TokenPair adminLogin(LoginRequest request) {
         Optional<Admin> adminOpt = adminRepository.findByAdminLoginId(request.loginId());
         if (adminOpt.isPresent()) {
             Admin admin = adminOpt.get();
