@@ -4,6 +4,7 @@
 server:
   port: ${PORT_NUMBER}
 
+spring:
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://${DB_HOST}:${DB_PORT}/${DB_NAME}?characterEncoding=UTF-8
@@ -32,7 +33,7 @@ server:
     database-platform: org.hibernate.dialect.MySQLDialect
 
 # Eureka Server URL
-#eureka:
-#  client:
-#    service-url:
-#      defaultZone: ${EUREKA_URL_PROD}
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URL_PROD}
