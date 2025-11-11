@@ -13,7 +13,7 @@ jobs:
 
     env:
       SPRING_PROFILES_ACTIVE: prod
-      DOMAIN: ${{ secrets.DOMAIN_NAME }}
+      DOMAIN_NAME: ${{ secrets.DOMAIN_NAME }}
       PORT_NUMBER: ${{ secrets.PORT_NUMBER }}
       REDIS_HOST: ${{ secrets.REDIS_HOST }}
       REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
@@ -64,7 +64,7 @@ jobs:
       - name: Rename JAR File
         run: |
           TIMESTAMP=$(TZ="Asia/Seoul" date +%Y%m%d-%H%M%S)
-          NEW_JAR_NAME="${DOMAIN}-${TIMESTAMP}.jar"
+          NEW_JAR_NAME="${DOMAIN_NAME}-${TIMESTAMP}.jar"
           mv target/*.jar target/$NEW_JAR_NAME
           echo "NEW_JAR_NAME=$NEW_JAR_NAME" >> $GITHUB_ENV
 
@@ -77,7 +77,7 @@ jobs:
           password: ${{ secrets.SSH_PASSWORD }}
           port: ${{ secrets.SSH_PORT }}
           source: "target/${{ env.NEW_JAR_NAME }}"
-          target: "/home/backend/be11-team1/${{ env.DOMAIN }}/"
+          target: "/home/backend/be11-team1/${{ secrets.DOMAIN_NAME }}/"
           strip_components: 1 # 폴더 구조 무시하고 파일만 업로드
           rm: false # 기존 파일 (중복 파일) 존재 시 덮어쓰기
 
@@ -90,6 +90,11 @@ jobs:
           password: ${{ secrets.SSH_PASSWORD }}
           port: ${{ secrets.SSH_PORT }}
           script: |
-            export DOMAIN="${{ env.DOMAIN }}"
-            export PORT="${{ env.PORT }}"
+            export DOMAIN_NAME="${{ secrets.DOMAIN_NAME }}"
+            export PORT_NUMBER="${{ secrets.PORT_NUMBER }}"
+            export REDIS_HOST="${{ secrets.REDIS_HOST }}"
+            export REDIS_PASSWORD="${{ secrets.REDIS_PASSWORD }}"
+            export REDIS_PORT="${{ secrets.REDIS_PORT }}"
+            export REDIS_RANGE="${{ secrets.REDIS_RANGE }}"
+            export EUREKA_URL_PROD="${{ secrets.EUREKA_URL_PROD }}"
             bash -lc ./startup.sh
