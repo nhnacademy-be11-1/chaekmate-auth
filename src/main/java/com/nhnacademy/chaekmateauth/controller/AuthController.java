@@ -58,6 +58,16 @@ public class AuthController {
 
         response.addHeader(HttpHeaders.SET_COOKIE, accessTokenCookie.toString());
 
+        ResponseCookie refreshTokenCookie = ResponseCookie.from("refreshToken", tokenPair.refreshToken())
+                .httpOnly(true)
+                .secure(cookieConfig.isSecureCookie())
+                .path("/")
+                .maxAge(jwtTokenProvider.getRefreshTokenExpiration())
+                .sameSite("Lax")
+                .build();
+
+        response.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString());
+
         Long memberId = jwtTokenProvider.getMemberIdFromToken(tokenPair.accessToken());
         String redisKey = REFRESH_TOKEN_PREFIX + ":" + memberId;
         long refreshExpirationMillis = jwtTokenProvider.getRefreshTokenExpiration() * 1000;
@@ -81,6 +91,16 @@ public class AuthController {
                 .build();
 
         response.addHeader(HttpHeaders.SET_COOKIE, accessTokenCookie.toString());
+
+        ResponseCookie refreshTokenCookie = ResponseCookie.from("refreshToken", tokenPair.refreshToken())
+                .httpOnly(true)
+                .secure(cookieConfig.isSecureCookie())
+                .path("/")
+                .maxAge(jwtTokenProvider.getRefreshTokenExpiration())
+                .sameSite("Lax")
+                .build();
+
+        response.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString());
 
         Long adminId = jwtTokenProvider.getMemberIdFromToken(tokenPair.accessToken());
         String redisKey = REFRESH_TOKEN_PREFIX + ":" + adminId;
@@ -140,5 +160,36 @@ public class AuthController {
         }
 
         return ResponseEntity.ok(new LogoutResponse("로그아웃 성공"));
+    }
+
+    // refreshToken을 쿠키에 저장?
+    @PostMapping("/refresh")
+    public ResponseEntity<LoginResponse> refreshToken(
+            @CookieValue("refreshToken") String refreshToken,
+            HttpServletResponse response) {
+        // refreshToken 발급
+        TokenPair tokenPair = authService.refreshToken(refreshToken);
+
+        // 새 AccessToken 쿠키 설정해줌
+        ResponseCookie accessTokenCookie = ResponseCookie.from("accessToken", tokenPair.accessToken())
+                .httpOnly(true)
+                .secure(cookieConfig.isSecureCookie())
+                .path("/")
+                .maxAge(jwtTokenProvider.getAccessTokenExpiration())
+                .sameSite("Lax")
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, accessTokenCookie.toString());
+
+        // refreshToken도 새로
+        ResponseCookie refreshTokenCookie = ResponseCookie.from("refreshToken", tokenPair.refreshToken())
+                .httpOnly(true)
+                .secure(cookieConfig.isSecureCookie())
+                .path("/")
+                .maxAge(jwtTokenProvider.getRefreshTokenExpiration())
+                .sameSite("Lax")
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString());
+
+        return ResponseEntity.ok(new LoginResponse("토큰 재발급 성공"));
     }
 }
