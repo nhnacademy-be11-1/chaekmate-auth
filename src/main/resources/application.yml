@@ -30,7 +30,7 @@ jwt:
   access:
     exp: ${ACCESS_TOKEN_EXPIRED_AT:3600}
   refresh:
-    exp: ${REFRESH_TOKEN_EXPIRED_AT:604800}
+    exp: ${REFRESH_TOKEN_EXPIRED_AT:259200}
 chaekmate:
   core:
     url: http://localhost:9100
