@@ -147,18 +147,34 @@ public class AuthController {
     @RequireMember
     public ResponseEntity<LogoutResponse> logout(
             @CookieValue(value = "accessToken", required = false)
-            String accessToken) {
+            String accessToken,
+            @CookieValue(value = "refreshToken", required = false)
+            String refreshToken) {
+
         // Redis에서 RefreshToken을 삭제
+        Long memberId = null;
         if (accessToken != null && !accessToken.trim().isEmpty()) {
             try {
-                Long memberId = jwtTokenProvider.getMemberIdFromToken(accessToken);
-                String redisKey = REFRESH_TOKEN_PREFIX + ":" + memberId;
-                redisTemplate.delete(redisKey);
+                memberId = jwtTokenProvider.getMemberIdFromToken(accessToken);
             } catch (AuthException e) {
-                // 토큰이 만료되었거나 유효하지 않아도 Redis 삭제는 시도함
+                // AccessToken이 만료 혹은 유효하지 않은 거임
             }
         }
 
+        // accessToken에서 추출 실패 했으니 refreskToken에서 시도
+        if (memberId == null && refreshToken != null && !refreshToken.trim().isEmpty()) {
+            try {
+                memberId = jwtTokenProvider.getMemberIdFromToken(refreshToken);
+            } catch (AuthException e) {
+                // RefreshToken도 만료되었거나 유효하지 않음
+            }
+        }
+
+        // memberId 추출했다면 redis에서 refreskToken삭제
+        if(memberId != null) {
+            String redisKey = REFRESH_TOKEN_PREFIX + ":" + memberId;
+            redisTemplate.delete(redisKey);
+        }
         return ResponseEntity.ok(new LogoutResponse("로그아웃 성공"));
     }
 
