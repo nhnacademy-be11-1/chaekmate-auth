@@ -149,10 +149,10 @@ public class AuthService {
     }
 
     /**
-     * PAYCO 정보 조회 및 임시 저장 (회원가입 페이지로 리다이렉트용)
-     * @return 임시 저장 키 (UUID)
+     * PAYCO 콜백 처리: 기존 회원이면 바로 로그인, 없으면 임시 정보 저장
+     * @return PaycoTempInfoResponse (기존 회원이면 token 포함, 신규 회원이면 tempInfo 포함)
      */
-    public String savePaycoTempInfo(String code) {
+    public PaycoTempInfoResponse processPaycoCallback(String code) {
         // 1. 토큰 교환 (필수 파라미터만 사용)
         PaycoTokenResponse tokenResponse = exchangePaycoToken(code);
 
@@ -176,36 +176,80 @@ public class AuthService {
         log.info("mobile (원본): {}", rawPhone);
         log.info("=================================");
 
-        String name = rawName != null && !rawName.trim().isEmpty()
-                ? rawName
-                : "PAYCO 사용자";
+        // 기존 회원 조회 (paycoId를 loginId로 사용)
+        Optional<Member> existingMember = memberRepository.findByLoginId(paycoId);
 
-        // PAYCO에서 제공하는 정보 (회원가입 시 입력한 정보)
-        String email = rawEmail;
-        String phone = rawPhone;  // PAYCO API는 mobile 필드 사용
+        if (existingMember.isPresent()) {
+            // 기존 회원: 바로 로그인 처리
+            log.info("기존 PAYCO 회원 발견: paycoId={}", paycoId);
+            Member member = existingMember.get();
+            member.updateLastLoginAt();
+            memberRepository.save(member);
 
-        log.info("=== 저장할 PAYCO 정보 ===");
-        log.info("paycoId: {}", paycoId);
-        log.info("name (저장): {}", name);
-        log.info("email (저장): {}", email);
-        log.info("phone (저장): {}", phone);
-        log.info("========================");
+            TokenPair tokenPair = jwtTokenProvider.createTokenPair(member.getId(), JwtTokenProvider.getTypeMember());
 
-        PaycoTempInfo tempInfo = new PaycoTempInfo(paycoId, name, email, phone);
+            // Redis에 RefreshToken 저장
+            String redisKey = REFRESH_TOKEN_PREFIX + ":" + member.getId();
+            long refreshExpirationMillis = jwtTokenProvider.getRefreshTokenExpiration() * 1000;
+            redisTemplate.opsForValue().set(redisKey, tokenPair.refreshToken(),
+                    Duration.ofMillis(refreshExpirationMillis));
 
-        // Redis에 임시 저장 (10분 유효, tempKey는 제외하고 저장)
-        String tempKey = UUID.randomUUID().toString();
-        String redisKey = PAYCO_TEMP_INFO_PREFIX + tempKey;
+            String name = rawName != null && !rawName.trim().isEmpty() ? rawName : null;
 
-        try {
-            String json = objectMapper.writeValueAsString(tempInfo);
-            redisTemplate.opsForValue().set(redisKey, json, Duration.ofMinutes(10));
-        } catch (JsonProcessingException e) {
-            log.error("PAYCO 임시 정보 저장 실패", e);
-            throw new AuthException(AuthErrorCode.INTERNAL_SERVER_ERROR);
+            return new PaycoTempInfoResponse(
+                    null,  // tempKey 없음
+                    paycoId,
+                    name,
+                    rawEmail,
+                    rawPhone,
+                    true,  // 기존 회원
+                    tokenPair.accessToken(),
+                    tokenPair.refreshToken()
+            );
+        } else {
+            // 신규 회원: 임시 정보 저장 후 회원가입 페이지로
+            log.info("신규 PAYCO 회원: paycoId={}", paycoId);
+
+            String name = rawName != null && !rawName.trim().isEmpty()
+                    ? rawName
+                    : null;
+
+            // PAYCO에서 제공하는 정보 (회원가입 시 입력한 정보)
+            String email = rawEmail;
+            String phone = rawPhone;  // PAYCO API는 mobile 필드 사용
+
+            log.info("=== 저장할 PAYCO 정보 ===");
+            log.info("paycoId: {}", paycoId);
+            log.info("name (저장): {}", name);
+            log.info("email (저장): {}", email);
+            log.info("phone (저장): {}", phone);
+            log.info("========================");
+
+            PaycoTempInfo tempInfo = new PaycoTempInfo(paycoId, name, email, phone);
+
+            // Redis에 임시 저장 (10분 유효, tempKey는 제외하고 저장)
+            String tempKey = UUID.randomUUID().toString();
+            String redisKey = PAYCO_TEMP_INFO_PREFIX + tempKey;
+
+            try {
+                String json = objectMapper.writeValueAsString(tempInfo);
+                redisTemplate.opsForValue().set(redisKey, json, Duration.ofMinutes(10));
+            } catch (JsonProcessingException e) {
+                log.error("PAYCO 임시 정보 저장 실패", e);
+                throw new AuthException(AuthErrorCode.INTERNAL_SERVER_ERROR);
+            }
+
+            return new PaycoTempInfoResponse(
+                    tempKey,
+                    paycoId,
+                    name,
+                    email,
+                    phone,
+                    false,  // 신규 회원
+                    null,   // token 없음
+                    null    // token 없음
+            );
         }
-
-        return tempKey;
     }
 
     /**
@@ -227,7 +271,10 @@ public class AuthService {
                     tempInfo.paycoId(),
                     tempInfo.name(),
                     tempInfo.email(),
-                    tempInfo.phone()
+                    tempInfo.phone(),
+                    false,  // 신규 회원
+                    null,   // token 없음
+                    null    // token 없음
             );
         } catch (JsonProcessingException e) {
             log.error("PAYCO 임시 정보 조회 실패", e);
@@ -244,19 +291,28 @@ public class AuthService {
     }
 
     /**
-     * PAYCO 로그인 처리 (기존 회원인 경우)
+     * PAYCO 회원가입 후 자동 로그인
+     * PAYCO idNo로 회원 조회 후 토큰 발급
      */
-    public TokenPair paycoLogin(String loginId, String password) {
-        Optional<Member> memberOpt = memberRepository.findByLoginId(loginId);
-        if (memberOpt.isPresent()) {
-            Member member = memberOpt.get();
-            if (passwordEncoder.matches(password, member.getPassword())) {
-                member.updateLastLoginAt();
-                memberRepository.save(member);
-                return jwtTokenProvider.createTokenPair(member.getId(), JwtTokenProvider.getTypeMember());
-            }
+    public TokenPair paycoAutoLogin(String paycoId) {
+        Optional<Member> memberOpt = memberRepository.findByLoginId(paycoId);
+        if (memberOpt.isEmpty()) {
+            throw new AuthException(AuthErrorCode.MEMBER_NOT_FOUND);
         }
-        throw new AuthException(AuthErrorCode.INVALID_CREDENTIALS);
+
+        Member member = memberOpt.get();
+        member.updateLastLoginAt();
+        memberRepository.save(member);
+
+        TokenPair tokenPair = jwtTokenProvider.createTokenPair(member.getId(), JwtTokenProvider.getTypeMember());
+
+        // Redis에 RefreshToken 저장
+        String redisKey = REFRESH_TOKEN_PREFIX + ":" + member.getId();
+        long refreshExpirationMillis = jwtTokenProvider.getRefreshTokenExpiration() * 1000;
+        redisTemplate.opsForValue().set(redisKey, tokenPair.refreshToken(),
+                Duration.ofMillis(refreshExpirationMillis));
+
+        return tokenPair;
     }
 
     /**

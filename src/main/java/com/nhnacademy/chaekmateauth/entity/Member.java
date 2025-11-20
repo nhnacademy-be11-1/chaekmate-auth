@@ -26,7 +26,7 @@ public class Member {
     @GeneratedValue(strategy = IDENTITY)
     private Long id;
 
-    @Column(length = 20, unique = true, nullable = false)
+    @Column(length =100, unique = true, nullable = false)
     private String loginId;
 
     @Column(length = 100, nullable = false)
