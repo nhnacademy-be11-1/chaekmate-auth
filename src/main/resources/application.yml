@@ -31,6 +31,10 @@ jwt:
     exp: ${ACCESS_TOKEN_EXPIRED_AT:3600}
   refresh:
     exp: ${REFRESH_TOKEN_EXPIRED_AT:259200}
-chaekmate:
-  core:
-    url: http://localhost:9100
+
+# PAYCO OAuth 설정
+payco:
+  oauth:
+    client-id: ${PAYCO_CLIENT_ID}
+    client-secret: ${PAYCO_CLIENT_SECRET}
+    redirect-uri: ${PAYCO_REDIRECT_URI}

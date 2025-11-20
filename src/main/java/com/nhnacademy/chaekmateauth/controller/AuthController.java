@@ -7,6 +7,8 @@ import com.nhnacademy.chaekmateauth.dto.response.LoginResponse;
 import com.nhnacademy.chaekmateauth.dto.response.LogoutResponse;
 import com.nhnacademy.chaekmateauth.annotation.RequireMember;
 import com.nhnacademy.chaekmateauth.dto.response.MemberInfoResponse;
+import com.nhnacademy.chaekmateauth.dto.response.PaycoAuthorizationResponse;
+import com.nhnacademy.chaekmateauth.dto.response.PaycoTempInfoResponse;
 import com.nhnacademy.chaekmateauth.entity.Admin;
 import com.nhnacademy.chaekmateauth.entity.Member;
 import com.nhnacademy.chaekmateauth.exception.AuthErrorCode;
@@ -19,17 +21,22 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import java.time.Duration;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CookieValue;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+@Slf4j
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
@@ -57,6 +64,7 @@ public class AuthController {
                 .build();
 
         response.addHeader(HttpHeaders.SET_COOKIE, accessTokenCookie.toString());
+        log.info("일반 로그인 - accessToken 쿠키 설정: {}", accessTokenCookie.toString());
 
         ResponseCookie refreshTokenCookie = ResponseCookie.from("refreshToken", tokenPair.refreshToken())
                 .httpOnly(true)
@@ -67,6 +75,7 @@ public class AuthController {
                 .build();
 
         response.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString());
+        log.info("일반 로그인 - refreshToken 쿠키 설정: {}", refreshTokenCookie.toString());
 
         Long memberId = jwtTokenProvider.getMemberIdFromToken(tokenPair.accessToken());
         String redisKey = REFRESH_TOKEN_PREFIX + ":" + memberId;
@@ -207,5 +216,107 @@ public class AuthController {
         response.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString());
 
         return ResponseEntity.ok(new LoginResponse("토큰 재발급 성공"));
+    }
+
+    /**
+     * PAYCO 인증 URL 반환
+     */
+    @GetMapping("/payco/authorize")
+    public ResponseEntity<PaycoAuthorizationResponse> getPaycoAuthorizationUrl() {
+        String authorizationUrl = authService.getPaycoAuthorizationUrl();
+        return ResponseEntity.ok(new PaycoAuthorizationResponse(authorizationUrl));
+    }
+
+    /**
+     * PAYCO OAuth 콜백 처리
+     * 기존 회원이면 바로 로그인, 없으면 회원가입 페이지로 리다이렉트
+     */
+    @GetMapping("/payco/callback")
+    public ResponseEntity<PaycoTempInfoResponse> paycoCallback(
+            @RequestParam("code") String code,
+            HttpServletResponse response) {
+
+        PaycoTempInfoResponse callbackResponse = authService.processPaycoCallback(code);
+
+        // 기존 회원이면 쿠키 설정
+        if (callbackResponse.isExistingMember() && callbackResponse.accessToken() != null) {
+            ResponseCookie accessTokenCookie = ResponseCookie.from("accessToken", callbackResponse.accessToken())
+                    .httpOnly(true)
+                    .secure(cookieConfig.isSecureCookie())
+                    .path("/")
+                    .maxAge(jwtTokenProvider.getAccessTokenExpiration())
+                    .sameSite("Lax")
+                    .build();
+            response.addHeader(HttpHeaders.SET_COOKIE, accessTokenCookie.toString());
+
+            ResponseCookie refreshTokenCookie = ResponseCookie.from("refreshToken", callbackResponse.refreshToken())
+                    .httpOnly(true)
+                    .secure(cookieConfig.isSecureCookie())
+                    .path("/")
+                    .maxAge(jwtTokenProvider.getRefreshTokenExpiration())
+                    .sameSite("Lax")
+                    .build();
+            response.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString());
+        }
+
+        return ResponseEntity.ok(callbackResponse);
+    }
+
+    /**
+     * PAYCO 임시 정보 조회
+     */
+    @GetMapping("/payco/temp/{tempKey}")
+    public ResponseEntity<PaycoTempInfoResponse> getPaycoTempInfo(@PathVariable String tempKey) {
+        PaycoTempInfoResponse tempInfo = authService.getPaycoTempInfo(tempKey);
+
+        return ResponseEntity.ok(tempInfo);
+    }
+
+    /**
+     * PAYCO 임시 정보 삭제 (회원가입 완료 후)
+     */
+    @DeleteMapping("/payco/temp/{tempKey}")
+    public ResponseEntity<Void> deletePaycoTempInfo(@PathVariable String tempKey) {
+        authService.deletePaycoTempInfo(tempKey);
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * PAYCO 회원가입 후 자동 로그인
+     */
+    @PostMapping("/payco/login")
+    public ResponseEntity<LoginResponse> paycoAutoLogin(@RequestParam("paycoId") String paycoId,
+                                                        HttpServletResponse response) {
+        TokenPair tokenPair = authService.paycoAutoLogin(paycoId);
+
+        ResponseCookie accessTokenCookie = ResponseCookie.from("accessToken", tokenPair.accessToken())
+                .httpOnly(true)
+                .secure(cookieConfig.isSecureCookie())
+                .path("/")
+                .maxAge(jwtTokenProvider.getAccessTokenExpiration())
+                .sameSite("Lax")
+                .build();
+
+        response.addHeader(HttpHeaders.SET_COOKIE, accessTokenCookie.toString());
+        log.info("PAYCO 자동 로그인 - accessToken 쿠키 설정: {}", accessTokenCookie.toString());
+
+        ResponseCookie refreshTokenCookie = ResponseCookie.from("refreshToken", tokenPair.refreshToken())
+                .httpOnly(true)
+                .secure(cookieConfig.isSecureCookie())
+                .path("/")
+                .maxAge(jwtTokenProvider.getRefreshTokenExpiration())
+                .sameSite("Lax")
+                .build();
+
+        response.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString());
+        log.info("PAYCO 자동 로그인 - refreshToken 쿠키 설정: {}", refreshTokenCookie.toString());
+
+        Long memberId = jwtTokenProvider.getMemberIdFromToken(tokenPair.accessToken());
+        String redisKey = REFRESH_TOKEN_PREFIX + ":" + memberId;
+        long refreshExpirationMillis = jwtTokenProvider.getRefreshTokenExpiration() * 1000;
+        redisTemplate.opsForValue().set(redisKey, tokenPair.refreshToken(),
+                Duration.ofMillis(refreshExpirationMillis));
+
+        return ResponseEntity.ok(new LoginResponse("로그인 성공"));
     }
 }
