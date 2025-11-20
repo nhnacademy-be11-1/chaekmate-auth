@@ -26,6 +26,9 @@ jobs:
       REDIS_RANGE: ${{ secrets.REDIS_RANGE }}
       EUREKA_URL_PROD: ${{ secrets.EUREKA_URL_PROD }}
       JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
+      PAYCO_CLIENT_ID : ${{ secrets.PAYCO_CLIENT_ID }}
+      PAYCO_CLIENT_SECRET : ${{ secrets.PAYCO_CLIENT_SECRET }}
+      PAYCO_REDIRECT_URI : ${{ secrets.PAYCO_REDIRECT_URI }}
 
     steps:
       # Step.1 코드 체크아웃
@@ -109,4 +112,7 @@ jobs:
             export REDIS_RANGE="${{ secrets.REDIS_RANGE }}"
             export EUREKA_URL_PROD="${{ secrets.EUREKA_URL_PROD }}"
             export JWT_SECRET_KEY="${{ secrets.JWT_SECRET_KEY }}"
+            export PAYCO_CLIENT_ID="${{ secrets.PAYCO_CLIENT_ID }}"
+            export PAYCO_CLIENT_SECRET="${{ secrets.PAYCO_CLIENT_SECRET }}"
+            export PAYCO_REDIRECT_URI="${{ secrets.PAYCO_REDIRECT_URI }}"
             bash -lc ./startup.sh
