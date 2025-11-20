@@ -7,6 +7,8 @@ import com.nhnacademy.chaekmateauth.dto.response.LoginResponse;
 import com.nhnacademy.chaekmateauth.dto.response.LogoutResponse;
 import com.nhnacademy.chaekmateauth.annotation.RequireMember;
 import com.nhnacademy.chaekmateauth.dto.response.MemberInfoResponse;
+import com.nhnacademy.chaekmateauth.dto.response.PaycoAuthorizationResponse;
+import com.nhnacademy.chaekmateauth.dto.response.PaycoTempInfoResponse;
 import com.nhnacademy.chaekmateauth.entity.Admin;
 import com.nhnacademy.chaekmateauth.entity.Member;
 import com.nhnacademy.chaekmateauth.exception.AuthErrorCode;
@@ -24,10 +26,13 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CookieValue;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -207,5 +212,66 @@ public class AuthController {
         response.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString());
 
         return ResponseEntity.ok(new LoginResponse("토큰 재발급 성공"));
+    }
+
+    /**
+     * PAYCO 인증 URL 반환
+     */
+    @GetMapping("/payco/authorize")
+    public ResponseEntity<PaycoAuthorizationResponse> getPaycoAuthorizationUrl() {
+        String authorizationUrl = authService.getPaycoAuthorizationUrl();
+        return ResponseEntity.ok(new PaycoAuthorizationResponse(authorizationUrl));
+    }
+
+    /**
+     * PAYCO OAuth 콜백 처리
+     * PAYCO 정보를 임시 저장하고 회원가입 페이지로 리다이렉트
+     */
+    @GetMapping("/payco/callback")
+    public ResponseEntity<PaycoTempInfoResponse> paycoCallback(
+            @RequestParam("code") String code) {
+
+        // PAYCO 정보 조회 및 임시 저장
+        String tempKey = authService.savePaycoTempInfo(code);
+        PaycoTempInfoResponse tempInfo = authService.getPaycoTempInfo(tempKey);
+
+        // tempKey를 포함한 응답 반환
+        PaycoTempInfoResponse response = new PaycoTempInfoResponse(
+                tempKey,
+                tempInfo.paycoId(),
+                tempInfo.name(),
+                tempInfo.email(),
+                tempInfo.phone()
+        );
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * PAYCO 임시 정보 조회
+     */
+    @GetMapping("/payco/temp/{tempKey}")
+    public ResponseEntity<PaycoTempInfoResponse> getPaycoTempInfo(@PathVariable String tempKey) {
+        PaycoTempInfoResponse tempInfo = authService.getPaycoTempInfo(tempKey);
+
+        // tempKey를 포함한 응답 반환
+        PaycoTempInfoResponse response = new PaycoTempInfoResponse(
+                tempKey,
+                tempInfo.paycoId(),
+                tempInfo.name(),
+                tempInfo.email(),
+                tempInfo.phone()
+        );
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * PAYCO 임시 정보 삭제 (회원가입 완료 후)
+     */
+    @DeleteMapping("/payco/temp/{tempKey}")
+    public ResponseEntity<Void> deletePaycoTempInfo(@PathVariable String tempKey) {
+        authService.deletePaycoTempInfo(tempKey);
+        return ResponseEntity.ok().build();
     }
 }
