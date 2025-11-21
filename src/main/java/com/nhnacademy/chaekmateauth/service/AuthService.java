@@ -25,6 +25,7 @@ import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -42,6 +43,9 @@ import org.springframework.web.util.UriComponentsBuilder;
 @Service
 @RequiredArgsConstructor
 public class AuthService {
+
+    @Value("${spring.profiles.active}")
+    private String activeProfile;
 
     private static final String REFRESH_TOKEN_PREFIX = "refresh";
     private static final String PAYCO_TEMP_INFO_PREFIX = "payco:temp:";
@@ -131,17 +135,32 @@ public class AuthService {
         return newTokenPair;
     }
     public String getPaycoAuthorizationUrl() {
+        // 프로파일에 따라 redirect_uri 결정
+        String redirectUri = paycoOAuthProperties.getRedirectUri();
+
+        // prod 프로파일이면 HTTPS로 변경, dev면 그대로 사용
+        if (redirectUri != null && !"dev".equalsIgnoreCase(activeProfile)) {
+            // prod 환경: HTTP를 HTTPS로 변경
+            if (redirectUri.startsWith("http://")) {
+                redirectUri = redirectUri.replace("http://", "https://");
+                log.info("프로덕션 환경: redirect_uri를 HTTPS로 변경: {}", redirectUri);
+            }
+        }
+
         String authorizationUrl = UriComponentsBuilder.fromHttpUrl(PAYCO_AUTHORIZE_URL)
                 .queryParam("response_type", PAYCO_RESPONSE_TYPE)  // 필수
                 .queryParam("client_id", paycoOAuthProperties.getClientId())  // 필수
                 .queryParam("serviceProviderCode", PAYCO_SERVICE_PROVIDER_CODE)  // 필수
-                .queryParam("redirect_uri", URLEncoder.encode(paycoOAuthProperties.getRedirectUri(), StandardCharsets.UTF_8))  // 필수
+                .queryParam("redirect_uri", URLEncoder.encode(redirectUri, StandardCharsets.UTF_8))  // 필수
                 .queryParam("userLocale", PAYCO_USER_LOCALE)  // 필수
                 .queryParam("scope", PAYCO_SCOPE)  // 이름, 이메일, 휴대폰 번호 정보 요청
                 .build()
                 .toUriString();
 
         log.info("=== 생성된 PAYCO Authorization URL ===");
+        log.info("프로파일: {}", activeProfile);
+        log.info("사용된 redirect_uri: {}", redirectUri);
+        log.info("전체 URL: {}", authorizationUrl);
         log.info("{}", authorizationUrl);
         log.info("=====================================");
 
