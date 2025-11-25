@@ -2,6 +2,7 @@ package com.nhnacademy.chaekmateauth.controller;
 
 import com.nhnacademy.chaekmateauth.common.config.CookieConfig;
 import com.nhnacademy.chaekmateauth.dto.TokenPair;
+import com.nhnacademy.chaekmateauth.dto.request.DormantVerificationRequest;
 import com.nhnacademy.chaekmateauth.dto.request.LoginRequest;
 import com.nhnacademy.chaekmateauth.dto.response.LoginResponse;
 import com.nhnacademy.chaekmateauth.dto.response.LogoutResponse;
@@ -318,5 +319,42 @@ public class AuthController {
                 Duration.ofMillis(refreshExpirationMillis));
 
         return ResponseEntity.ok(new LoginResponse("로그인 성공"));
+    }
+
+    @PostMapping("/dormant/verify")
+    public ResponseEntity<LoginResponse> verifyDormantMember(
+            @RequestParam("loginId") String loginId,
+            @Valid @RequestBody DormantVerificationRequest request,
+            HttpServletResponse response) {
+
+        TokenPair tokenPair = authService.activateDormantMember(loginId, request.verificationCode());
+
+        // 쿠키 설정
+        ResponseCookie accessTokenCookie = ResponseCookie.from("accessToken", tokenPair.accessToken())
+                .httpOnly(true)
+                .secure(cookieConfig.isSecureCookie())
+                .path("/")
+                .maxAge(jwtTokenProvider.getAccessTokenExpiration())
+                .sameSite("Lax")
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, accessTokenCookie.toString());
+
+        ResponseCookie refreshTokenCookie = ResponseCookie.from("refreshToken", tokenPair.refreshToken())
+                .httpOnly(true)
+                .secure(cookieConfig.isSecureCookie())
+                .path("/")
+                .maxAge(jwtTokenProvider.getRefreshTokenExpiration())
+                .sameSite("Lax")
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString());
+
+        // Redis에 refreshToken 저장
+        Long memberId = jwtTokenProvider.getMemberIdFromToken(tokenPair.accessToken());
+        String redisKey = REFRESH_TOKEN_PREFIX + ":" + memberId;
+        long refreshExpirationMillis = jwtTokenProvider.getRefreshTokenExpiration() * 1000;
+        redisTemplate.opsForValue().set(redisKey, tokenPair.refreshToken(),
+                Duration.ofMillis(refreshExpirationMillis));
+
+        return ResponseEntity.ok(new LoginResponse("휴면 계정 해제 및 로그인 성공"));
     }
 }

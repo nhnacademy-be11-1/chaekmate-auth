@@ -38,3 +38,8 @@ payco:
     client-id: ${PAYCO_CLIENT_ID}
     client-secret: ${PAYCO_CLIENT_SECRET}
     redirect-uri: ${PAYCO_REDIRECT_URI}
+
+# Dooray Webhook 설정
+dooray:
+  webhook:
+    url: ${DOORAY_WEBHOOK_URL}
