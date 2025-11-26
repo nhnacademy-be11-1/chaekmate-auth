@@ -60,6 +60,9 @@ public class AuthService {
     private static final String PAYCO_USER_LOCALE = "ko_KR";
     private static final String PAYCO_SCOPE = "name,email,mobile";
 
+    private static final String PARAM_CLIENT_ID = "client_id";
+    private static final String PARAM_CLIENT_SECRET = "client_secret";
+    private static final String PARAM_ACCESS_TOKEN = "access_token";
 
     private final JwtTokenProvider jwtTokenProvider;
     private final MemberRepository memberRepository;
@@ -174,17 +177,16 @@ public class AuthService {
         String redirectUri = paycoOAuthProperties.getRedirectUri();
 
         // prod 프로파일이면 HTTPS로 변경, dev면 그대로 사용
-        if (redirectUri != null && !"dev".equalsIgnoreCase(activeProfile)) {
+        if (redirectUri != null && !"dev".equalsIgnoreCase(activeProfile) && redirectUri.startsWith("http://")) {
             // prod 환경: HTTP를 HTTPS로 변경
-            if (redirectUri.startsWith("http://")) {
                 redirectUri = redirectUri.replace("http://", "https://");
                 log.info("프로덕션 환경: redirect_uri를 HTTPS로 변경: {}", redirectUri);
-            }
         }
 
-        String authorizationUrl = UriComponentsBuilder.fromHttpUrl(PAYCO_AUTHORIZE_URL)
+         //String authorizationUrl = UriComponentsBuilder.fromHttpUrl(PAYCO_AUTHORIZE_URL)
+        String authorizationUrl = UriComponentsBuilder.fromUriString(PAYCO_AUTHORIZE_URL)
                 .queryParam("response_type", PAYCO_RESPONSE_TYPE)  // 필수
-                .queryParam("client_id", paycoOAuthProperties.getClientId())  // 필수
+                .queryParam(PARAM_CLIENT_ID, paycoOAuthProperties.getClientId())  // 필수
                 .queryParam("serviceProviderCode", PAYCO_SERVICE_PROVIDER_CODE)  // 필수
                 .queryParam("redirect_uri", URLEncoder.encode(redirectUri, StandardCharsets.UTF_8))  // 필수
                 .queryParam("userLocale", PAYCO_USER_LOCALE)  // 필수
@@ -370,8 +372,8 @@ public class AuthService {
     private PaycoTokenResponse exchangePaycoToken(String code) {
         MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
         params.add("grant_type", "authorization_code");  // 필수
-        params.add("client_id", paycoOAuthProperties.getClientId());  // 필수
-        params.add("client_secret", paycoOAuthProperties.getClientSecret());  // 필수
+        params.add(PARAM_CLIENT_ID, paycoOAuthProperties.getClientId());  // 필수
+        params.add(PARAM_CLIENT_SECRET, paycoOAuthProperties.getClientSecret());  // 필수
         params.add("code", code);  // 필수
 
         HttpHeaders headers = new HttpHeaders();
@@ -404,8 +406,8 @@ public class AuthService {
      */
     private PaycoMemberInfoResponse getPaycoMemberInfo(String accessToken) {
         HttpHeaders headers = new HttpHeaders();
-        headers.set("client_id", paycoOAuthProperties.getClientId());  // 필수
-        headers.set("access_token", accessToken);  // 필수
+        headers.set(PARAM_CLIENT_ID, paycoOAuthProperties.getClientId());  // 필수
+        headers.set(PARAM_ACCESS_TOKEN, accessToken);  // 필수
 
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(new HashMap<>(), headers);
 
