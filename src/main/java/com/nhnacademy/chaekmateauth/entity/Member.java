@@ -12,7 +12,6 @@ import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 
 @Getter
@@ -34,9 +33,6 @@ public class Member {
 
     @Column(length = 50, nullable = false)
     private String name;
-
-//    @Column(name = "deleted_at")
-//    private LocalDateTime deletedAt;
 
     @Column(name = "last_login_at")
     private LocalDateTime lastLoginAt;
