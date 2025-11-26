@@ -1,7 +1,7 @@
 package com.nhnacademy.chaekmateauth.controller;
 
-import com.nhnacademy.chaekmateauth.common.config.CookieConfig;
 import com.nhnacademy.chaekmateauth.dto.TokenPair;
+import com.nhnacademy.chaekmateauth.dto.request.DormantVerificationRequest;
 import com.nhnacademy.chaekmateauth.dto.request.LoginRequest;
 import com.nhnacademy.chaekmateauth.dto.response.LoginResponse;
 import com.nhnacademy.chaekmateauth.dto.response.LogoutResponse;
@@ -17,14 +17,13 @@ import com.nhnacademy.chaekmateauth.repository.AdminRepository;
 import com.nhnacademy.chaekmateauth.repository.MemberRepository;
 import com.nhnacademy.chaekmateauth.service.AuthService;
 import com.nhnacademy.chaekmateauth.util.JwtTokenProvider;
+import com.nhnacademy.chaekmateauth.util.ResponseCookieUtil;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import java.time.Duration;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -44,7 +43,7 @@ public class AuthController {
 
     private final AuthService authService;
     private final JwtTokenProvider jwtTokenProvider;
-    private final CookieConfig cookieConfig;
+    private final ResponseCookieUtil responseCookieUtil;
     private static final String REFRESH_TOKEN_PREFIX = "refresh";
     private final RedisTemplate<String, String> redisTemplate;
     private final MemberRepository memberRepository;
@@ -55,27 +54,8 @@ public class AuthController {
                                                HttpServletResponse response) {
         TokenPair tokenPair = authService.memberLogin(request);
 
-        ResponseCookie accessTokenCookie = ResponseCookie.from("accessToken", tokenPair.accessToken())
-                .httpOnly(true)
-                .secure(cookieConfig.isSecureCookie())
-                .path("/")
-                .maxAge(jwtTokenProvider.getAccessTokenExpiration())
-                .sameSite("Lax")
-                .build();
-
-        response.addHeader(HttpHeaders.SET_COOKIE, accessTokenCookie.toString());
-        log.info("일반 로그인 - accessToken 쿠키 설정: {}", accessTokenCookie.toString());
-
-        ResponseCookie refreshTokenCookie = ResponseCookie.from("refreshToken", tokenPair.refreshToken())
-                .httpOnly(true)
-                .secure(cookieConfig.isSecureCookie())
-                .path("/")
-                .maxAge(jwtTokenProvider.getRefreshTokenExpiration())
-                .sameSite("Lax")
-                .build();
-
-        response.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString());
-        log.info("일반 로그인 - refreshToken 쿠키 설정: {}", refreshTokenCookie.toString());
+        responseCookieUtil.addTokenCookies(response, tokenPair);
+        log.info("일반 로그인 - 토큰 쿠키 설정 완료");
 
         Long memberId = jwtTokenProvider.getMemberIdFromToken(tokenPair.accessToken());
         String redisKey = REFRESH_TOKEN_PREFIX + ":" + memberId;
@@ -91,25 +71,7 @@ public class AuthController {
                                                     HttpServletResponse response) {
         TokenPair tokenPair = authService.adminLogin(request);
 
-        ResponseCookie accessTokenCookie = ResponseCookie.from("accessToken", tokenPair.accessToken())
-                .httpOnly(true)
-                .secure(cookieConfig.isSecureCookie())
-                .path("/")
-                .maxAge(jwtTokenProvider.getAccessTokenExpiration())
-                .sameSite("Lax")
-                .build();
-
-        response.addHeader(HttpHeaders.SET_COOKIE, accessTokenCookie.toString());
-
-        ResponseCookie refreshTokenCookie = ResponseCookie.from("refreshToken", tokenPair.refreshToken())
-                .httpOnly(true)
-                .secure(cookieConfig.isSecureCookie())
-                .path("/")
-                .maxAge(jwtTokenProvider.getRefreshTokenExpiration())
-                .sameSite("Lax")
-                .build();
-
-        response.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString());
+        responseCookieUtil.addTokenCookies(response, tokenPair);
 
         Long adminId = jwtTokenProvider.getMemberIdFromToken(tokenPair.accessToken());
         String redisKey = REFRESH_TOKEN_PREFIX + ":" + adminId;
@@ -123,7 +85,7 @@ public class AuthController {
     @GetMapping("/me")
     @RequireMember
     public ResponseEntity<MemberInfoResponse> getMemberInfo(
-            @CookieValue("accessToken") String token) {
+            @CookieValue(ResponseCookieUtil.ACCESS_TOKEN_COOKIE_NAME) String token) {
         // 토큰 검증 및 memberId 추출
         Long id = jwtTokenProvider.getMemberIdFromToken(token);
         // userType도 추출
@@ -155,9 +117,9 @@ public class AuthController {
     @PostMapping("/logout")
     @RequireMember
     public ResponseEntity<LogoutResponse> logout(
-            @CookieValue(value = "accessToken", required = false)
+            @CookieValue(value = ResponseCookieUtil.ACCESS_TOKEN_COOKIE_NAME, required = false)
             String accessToken,
-            @CookieValue(value = "refreshToken", required = false)
+            @CookieValue(value = ResponseCookieUtil.REFRESH_TOKEN_COOKIE_NAME, required = false)
             String refreshToken) {
 
         // Redis에서 RefreshToken을 삭제
@@ -190,30 +152,13 @@ public class AuthController {
     // refreshToken을 쿠키에 저장?
     @PostMapping("/refresh")
     public ResponseEntity<LoginResponse> refreshToken(
-            @CookieValue("refreshToken") String refreshToken,
+            @CookieValue(ResponseCookieUtil.REFRESH_TOKEN_COOKIE_NAME) String refreshToken,
             HttpServletResponse response) {
         // refreshToken 발급
         TokenPair tokenPair = authService.refreshToken(refreshToken);
 
-        // 새 AccessToken 쿠키 설정해줌
-        ResponseCookie accessTokenCookie = ResponseCookie.from("accessToken", tokenPair.accessToken())
-                .httpOnly(true)
-                .secure(cookieConfig.isSecureCookie())
-                .path("/")
-                .maxAge(jwtTokenProvider.getAccessTokenExpiration())
-                .sameSite("Lax")
-                .build();
-        response.addHeader(HttpHeaders.SET_COOKIE, accessTokenCookie.toString());
-
-        // refreshToken도 새로
-        ResponseCookie refreshTokenCookie = ResponseCookie.from("refreshToken", tokenPair.refreshToken())
-                .httpOnly(true)
-                .secure(cookieConfig.isSecureCookie())
-                .path("/")
-                .maxAge(jwtTokenProvider.getRefreshTokenExpiration())
-                .sameSite("Lax")
-                .build();
-        response.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString());
+        // 새 토큰 쿠키 설정
+        responseCookieUtil.addTokenCookies(response, tokenPair);
 
         return ResponseEntity.ok(new LoginResponse("토큰 재발급 성공"));
     }
@@ -239,24 +184,9 @@ public class AuthController {
         PaycoTempInfoResponse callbackResponse = authService.processPaycoCallback(code);
 
         // 기존 회원이면 쿠키 설정
-        if (callbackResponse.isExistingMember() && callbackResponse.accessToken() != null) {
-            ResponseCookie accessTokenCookie = ResponseCookie.from("accessToken", callbackResponse.accessToken())
-                    .httpOnly(true)
-                    .secure(cookieConfig.isSecureCookie())
-                    .path("/")
-                    .maxAge(jwtTokenProvider.getAccessTokenExpiration())
-                    .sameSite("Lax")
-                    .build();
-            response.addHeader(HttpHeaders.SET_COOKIE, accessTokenCookie.toString());
-
-            ResponseCookie refreshTokenCookie = ResponseCookie.from("refreshToken", callbackResponse.refreshToken())
-                    .httpOnly(true)
-                    .secure(cookieConfig.isSecureCookie())
-                    .path("/")
-                    .maxAge(jwtTokenProvider.getRefreshTokenExpiration())
-                    .sameSite("Lax")
-                    .build();
-            response.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString());
+        if (Boolean.TRUE.equals(callbackResponse.isExistingMember()) && callbackResponse.accessToken() != null) {
+            responseCookieUtil.addAccessTokenCookie(response, callbackResponse.accessToken());
+            responseCookieUtil.addRefreshTokenCookie(response, callbackResponse.refreshToken());
         }
 
         return ResponseEntity.ok(callbackResponse);
@@ -289,27 +219,8 @@ public class AuthController {
                                                         HttpServletResponse response) {
         TokenPair tokenPair = authService.paycoAutoLogin(paycoId);
 
-        ResponseCookie accessTokenCookie = ResponseCookie.from("accessToken", tokenPair.accessToken())
-                .httpOnly(true)
-                .secure(cookieConfig.isSecureCookie())
-                .path("/")
-                .maxAge(jwtTokenProvider.getAccessTokenExpiration())
-                .sameSite("Lax")
-                .build();
-
-        response.addHeader(HttpHeaders.SET_COOKIE, accessTokenCookie.toString());
-        log.info("PAYCO 자동 로그인 - accessToken 쿠키 설정: {}", accessTokenCookie.toString());
-
-        ResponseCookie refreshTokenCookie = ResponseCookie.from("refreshToken", tokenPair.refreshToken())
-                .httpOnly(true)
-                .secure(cookieConfig.isSecureCookie())
-                .path("/")
-                .maxAge(jwtTokenProvider.getRefreshTokenExpiration())
-                .sameSite("Lax")
-                .build();
-
-        response.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString());
-        log.info("PAYCO 자동 로그인 - refreshToken 쿠키 설정: {}", refreshTokenCookie.toString());
+        responseCookieUtil.addTokenCookies(response, tokenPair);
+        log.info("PAYCO 자동 로그인 - 토큰 쿠키 설정 완료");
 
         Long memberId = jwtTokenProvider.getMemberIdFromToken(tokenPair.accessToken());
         String redisKey = REFRESH_TOKEN_PREFIX + ":" + memberId;
@@ -318,5 +229,26 @@ public class AuthController {
                 Duration.ofMillis(refreshExpirationMillis));
 
         return ResponseEntity.ok(new LoginResponse("로그인 성공"));
+    }
+
+    @PostMapping("/dormant/verify")
+    public ResponseEntity<LoginResponse> verifyDormantMember(
+            @RequestParam("loginId") String loginId,
+            @Valid @RequestBody DormantVerificationRequest request,
+            HttpServletResponse response) {
+
+        TokenPair tokenPair = authService.activateDormantMember(loginId, request.verificationCode());
+
+        // 쿠키 설정
+        responseCookieUtil.addTokenCookies(response, tokenPair);
+
+        // Redis에 refreshToken 저장
+        Long memberId = jwtTokenProvider.getMemberIdFromToken(tokenPair.accessToken());
+        String redisKey = REFRESH_TOKEN_PREFIX + ":" + memberId;
+        long refreshExpirationMillis = jwtTokenProvider.getRefreshTokenExpiration() * 1000;
+        redisTemplate.opsForValue().set(redisKey, tokenPair.refreshToken(),
+                Duration.ofMillis(refreshExpirationMillis));
+
+        return ResponseEntity.ok(new LoginResponse("휴면 계정 해제 및 로그인 성공"));
     }
 }

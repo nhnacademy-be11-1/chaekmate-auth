@@ -28,12 +28,12 @@ spring:
     hibernate:
       # create , update 금지
       ddl-auto: none # validate에서 none으로 수정
-    show-sql: true
+    show-sql: false
     properties:
       hibernate:
-        format_sql: true
-        use_sql_comments: true
-        highlight_sql: true
+        format_sql: false
+        use_sql_comments: false
+        highlight_sql: false
     open-in-view: false
     database-platform: org.hibernate.dialect.MySQL8Dialect
 

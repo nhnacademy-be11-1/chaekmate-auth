@@ -19,6 +19,7 @@ import com.nhnacademy.chaekmateauth.util.JwtTokenProvider;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -59,6 +60,9 @@ public class AuthService {
     private static final String PAYCO_USER_LOCALE = "ko_KR";
     private static final String PAYCO_SCOPE = "name,email,mobile";
 
+    private static final String PARAM_CLIENT_ID = "client_id";
+    private static final String PARAM_CLIENT_SECRET = "client_secret";
+    private static final String PARAM_ACCESS_TOKEN = "access_token";
 
     private final JwtTokenProvider jwtTokenProvider;
     private final MemberRepository memberRepository;
@@ -68,12 +72,22 @@ public class AuthService {
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
     private final PaycoOAuthProperties paycoOAuthProperties;
+    private final DoorayService doorayService;
 
     public TokenPair memberLogin(LoginRequest request) {
         Optional<Member> memberOpt = memberRepository.findByLoginId(request.loginId());
         if (memberOpt.isPresent()) {
             Member member = memberOpt.get();
             if (passwordEncoder.matches(request.password(), member.getPassword())) {
+                // 휴면 계정 체크 (3개월 이상 미접속)
+                if (isDormantMember(member.getLastLoginAt())) {
+                    // Dooray 메시지로 인증번호 전송
+                    doorayService.sendDormantVerificationCode(member.getId());
+                    // 휴면 회원 예외 발생
+                    throw new AuthException(AuthErrorCode.DORMANT_MEMBER);
+                }
+
+                // 일반 회원: 로그인 처리
                 member.updateLastLoginAt();
                 memberRepository.save(member);
                 return jwtTokenProvider.createTokenPair(member.getId(), JwtTokenProvider.getTypeMember());
@@ -82,10 +96,34 @@ public class AuthService {
         throw new AuthException(AuthErrorCode.INVALID_CREDENTIALS);
     }
 
-        // 3개월 지나서 휴면해제 인증 필요
-        //if(){
-            // dooray message sender로 메시지 보내기
-        //}
+    private boolean isDormantMember(LocalDateTime lastLoginAt) {
+        if (lastLoginAt == null) {
+            return true; // 로그인한 적이 없으면 휴면
+        }
+
+        LocalDateTime threeMonthsAgo = LocalDateTime.now().minusMonths(3);
+        return lastLoginAt.isBefore(threeMonthsAgo);
+    }
+
+    public TokenPair activateDormantMember(String loginId, String verificationCode) {
+        // 회원 조회
+        Member member = memberRepository.findByLoginId(loginId)
+                .orElseThrow(() -> new AuthException(AuthErrorCode.MEMBER_NOT_FOUND));
+
+        // 인증번호 검증
+        boolean isValid = doorayService.verifyCode(member.getId(), verificationCode);
+        if (!isValid) {
+            throw new AuthException(AuthErrorCode.INVALID_VERIFICATION_CODE);
+        }
+
+        // 인증되면 휴면 해제해줌(lastLoginAt 업데이트)
+        member.updateLastLoginAt();
+        memberRepository.save(member);
+
+        // 로그인 처리해줌(토큰 발급)
+        return jwtTokenProvider.createTokenPair(member.getId(), JwtTokenProvider.getTypeMember());
+    }
+
     public TokenPair adminLogin(LoginRequest request) {
         Optional<Admin> adminOpt = adminRepository.findByAdminLoginId(request.loginId());
         if (adminOpt.isPresent()) {
@@ -139,17 +177,16 @@ public class AuthService {
         String redirectUri = paycoOAuthProperties.getRedirectUri();
 
         // prod 프로파일이면 HTTPS로 변경, dev면 그대로 사용
-        if (redirectUri != null && !"dev".equalsIgnoreCase(activeProfile)) {
+        if (redirectUri != null && !"dev".equalsIgnoreCase(activeProfile) && redirectUri.startsWith("http://")) {
             // prod 환경: HTTP를 HTTPS로 변경
-            if (redirectUri.startsWith("http://")) {
                 redirectUri = redirectUri.replace("http://", "https://");
                 log.info("프로덕션 환경: redirect_uri를 HTTPS로 변경: {}", redirectUri);
-            }
         }
 
-        String authorizationUrl = UriComponentsBuilder.fromHttpUrl(PAYCO_AUTHORIZE_URL)
+         //String authorizationUrl = UriComponentsBuilder.fromHttpUrl(PAYCO_AUTHORIZE_URL)
+        String authorizationUrl = UriComponentsBuilder.fromUriString(PAYCO_AUTHORIZE_URL)
                 .queryParam("response_type", PAYCO_RESPONSE_TYPE)  // 필수
-                .queryParam("client_id", paycoOAuthProperties.getClientId())  // 필수
+                .queryParam(PARAM_CLIENT_ID, paycoOAuthProperties.getClientId())  // 필수
                 .queryParam("serviceProviderCode", PAYCO_SERVICE_PROVIDER_CODE)  // 필수
                 .queryParam("redirect_uri", URLEncoder.encode(redirectUri, StandardCharsets.UTF_8))  // 필수
                 .queryParam("userLocale", PAYCO_USER_LOCALE)  // 필수
@@ -157,12 +194,7 @@ public class AuthService {
                 .build()
                 .toUriString();
 
-        log.info("=== 생성된 PAYCO Authorization URL ===");
-        log.info("프로파일: {}", activeProfile);
-        log.info("사용된 redirect_uri: {}", redirectUri);
-        log.info("전체 URL: {}", authorizationUrl);
-        log.info("{}", authorizationUrl);
-        log.info("=====================================");
+        log.debug("PAYCO Authorization URL 생성: profile={}, redirectUri={}", activeProfile, redirectUri);
 
         return authorizationUrl;
     }
@@ -340,8 +372,8 @@ public class AuthService {
     private PaycoTokenResponse exchangePaycoToken(String code) {
         MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
         params.add("grant_type", "authorization_code");  // 필수
-        params.add("client_id", paycoOAuthProperties.getClientId());  // 필수
-        params.add("client_secret", paycoOAuthProperties.getClientSecret());  // 필수
+        params.add(PARAM_CLIENT_ID, paycoOAuthProperties.getClientId());  // 필수
+        params.add(PARAM_CLIENT_SECRET, paycoOAuthProperties.getClientSecret());  // 필수
         params.add("code", code);  // 필수
 
         HttpHeaders headers = new HttpHeaders();
@@ -374,8 +406,8 @@ public class AuthService {
      */
     private PaycoMemberInfoResponse getPaycoMemberInfo(String accessToken) {
         HttpHeaders headers = new HttpHeaders();
-        headers.set("client_id", paycoOAuthProperties.getClientId());  // 필수
-        headers.set("access_token", accessToken);  // 필수
+        headers.set(PARAM_CLIENT_ID, paycoOAuthProperties.getClientId());  // 필수
+        headers.set(PARAM_ACCESS_TOKEN, accessToken);  // 필수
 
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(new HashMap<>(), headers);
 

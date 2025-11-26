@@ -1,6 +1,5 @@
 package com.nhnacademy.chaekmateauth.aop;
 
-import com.nhnacademy.chaekmateauth.common.properties.JwtProperties;
 import com.nhnacademy.chaekmateauth.exception.AuthErrorCode;
 import com.nhnacademy.chaekmateauth.exception.AuthException;
 import com.nhnacademy.chaekmateauth.util.JwtTokenProvider;
