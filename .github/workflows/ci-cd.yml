@@ -14,7 +14,8 @@ jobs:
     env:
       SPRING_PROFILES_ACTIVE: prod
       DOMAIN_NAME: ${{ secrets.DOMAIN_NAME }}
-      PORT_NUMBER: ${{ secrets.PORT_NUMBER }}
+      PORT_NUMBER_A: ${{secrets.PORT_NUMBER_A}}
+      PORT_NUMBER_B: ${{secrets.PORT_NUMBER_B}}
       DB_HOST: ${{ secrets.DB_HOST }}
       DB_PORT: ${{ secrets.DB_PORT }}
       DB_NAME: ${{ secrets.DB_NAME }}
@@ -101,7 +102,8 @@ jobs:
           port: ${{ secrets.SSH_PORT }}
           script: |
             export DOMAIN_NAME="${{ secrets.DOMAIN_NAME }}"
-            export PORT_NUMBER="${{ secrets.PORT_NUMBER }}"
+            export PORT_NUMBER_A="${{secrets.PORT_NUMBER_A}}"
+            export PORT_NUMBER_B="${{secrets.PORT_NUMBER_B}}"
             export DB_HOST="${{ secrets.DB_HOST }}"
             export DB_PORT="${{ secrets.DB_PORT }}"
             export DB_NAME="${{ secrets.DB_NAME }}"

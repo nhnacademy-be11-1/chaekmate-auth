@@ -1,9 +1,5 @@
 # Auth/Eureka Server Port (prod) : "배포설명" 확인
 
-# Auth Server Port
-server:
-  port: ${PORT_NUMBER}
-
 spring:
   data:
     redis:
