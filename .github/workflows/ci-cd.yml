@@ -116,5 +116,5 @@ jobs:
             export PAYCO_CLIENT_ID="${{ secrets.PAYCO_CLIENT_ID }}"
             export PAYCO_CLIENT_SECRET="${{ secrets.PAYCO_CLIENT_SECRET }}"
             export PAYCO_REDIRECT_URI="${{ secrets.PAYCO_REDIRECT_URI }}"
-            export DOORAY_WEBHOOK_URL= "${{ secrets.DOORAY_WEBHOOK_URL }}"
+            export DOORAY_WEBHOOK_URL="${{ secrets.DOORAY_WEBHOOK_URL }}"
             bash -lc ./startup.sh
