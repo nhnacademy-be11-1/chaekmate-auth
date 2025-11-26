@@ -22,6 +22,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -79,8 +80,9 @@ public class AuthService {
         if (memberOpt.isPresent()) {
             Member member = memberOpt.get();
             if (passwordEncoder.matches(request.password(), member.getPassword())) {
+
                 // 휴면 계정 체크 (3개월 이상 미접속)
-                if (isDormantMember(member.getLastLoginAt())) {
+                if (Objects.nonNull(member.getLastLoginAt()) && isDormantMember(member.getLastLoginAt())) {
                     // Dooray 메시지로 인증번호 전송
                     doorayService.sendDormantVerificationCode(member.getId());
                     // 휴면 회원 예외 발생
