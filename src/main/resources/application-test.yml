@@ -23,3 +23,8 @@ jwt:
     exp: 3600
   refresh:
     exp: 604800
+
+
+chaekmate:
+  logstorage:
+    enabled: false
