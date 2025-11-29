@@ -5,6 +5,7 @@ import com.nhnacademy.chaekmateauth.dto.TokenPair;
 import com.nhnacademy.chaekmateauth.exception.AuthErrorCode;
 import com.nhnacademy.chaekmateauth.exception.AuthException;
 import com.nhnacademy.chaekmateauth.util.JwtTokenProvider;
+import com.nhnacademy.chaekmateauth.util.MemberIdEncryptor;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -90,7 +91,8 @@ class JwtTokenProviderTest {
         otherRefreshToken.setExp(DEFAULT_REFRESH_EXPIRATION);
         otherProperties.setRefresh(otherRefreshToken);
 
-        return new JwtTokenProvider(otherProperties);
+        MemberIdEncryptor memberIdEncryptor = new MemberIdEncryptor(otherProperties);
+        return new JwtTokenProvider(otherProperties, memberIdEncryptor);
     }
 
     @Test
