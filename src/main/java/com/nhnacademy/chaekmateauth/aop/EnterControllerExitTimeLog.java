@@ -15,12 +15,12 @@ public class EnterControllerExitTimeLog {
         String className = joinPoint.getSignature().getDeclaringType().getSimpleName();
         String methodName = joinPoint.getSignature().getName();
 
-        Log.InfoWithClassMethod(className, methodName, "traffic: methodName:{}", methodName);
+        Log.TrafficWithClassMethod(className, methodName);
 
         Object result = joinPoint.proceed();
 
         Long responseTime = System.currentTimeMillis() - start;
-        Log.ResponseTimeWithClassMethod(responseTime, className, methodName, "responseTime: methodName:{}", methodName);
+        Log.ResponseTimeWithClassMethod(responseTime, className, methodName);
         return result;
     }
 }
