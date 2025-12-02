@@ -139,6 +139,13 @@
             <artifactId>spring-cloud-starter-config</artifactId>
         </dependency>
 
+        <!-- 로그 중앙화 -->
+        <dependency>
+            <groupId>net.logstash.logback</groupId>
+            <artifactId>logstash-logback-encoder</artifactId>
+            <version>8.0</version>
+        </dependency>
+
     </dependencies>
 
     <dependencyManagement>

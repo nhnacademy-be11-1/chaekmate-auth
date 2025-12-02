@@ -1,0 +1,50 @@
+<configuration>
+
+    <!-- 콘솔 로그 패턴 & charset (공통) -->
+    <conversionRule conversionWord="clr" class="org.springframework.boot.logging.logback.ColorConverter" />
+    <conversionRule conversionWord="wex" class="org.springframework.boot.logging.logback.WhitespaceThrowableProxyConverter" />
+    <conversionRule conversionWord="wEx" class="org.springframework.boot.logging.logback.ExtendedWhitespaceThrowableProxyConverter" />
+
+    <property name="CONSOLE_LOG_PATTERN" value="${CONSOLE_LOG_PATTERN:-%clr(%d{${LOG_DATEFORMAT_PATTERN:-yyyy-MM-dd HH:mm:ss.SSS}}){green} %clr(${LOG_LEVEL_PATTERN:-%7p}){cyan}  %clr(${PID:- }){magenta} %clr(---){faint} %clr([%15.15t]){faint} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %m%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}}" />
+    <property name="CONSOLE_LOG_CHARSET" value="${CONSOLE_LOG_CHARSET:-default}" />
+
+    <!-- 공통 콘솔 Appender -->
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${CONSOLE_LOG_PATTERN}</pattern>
+            <charset>${CONSOLE_LOG_CHARSET}</charset>
+        </encoder>
+    </appender>
+
+    <!-- 공통 root: stdout만 -->
+    <root level="INFO">
+        <appender-ref ref="STDOUT"/>
+    </root>
+
+    <!-- dev profile: 추가 작업 없음 (기본 공통 설정 사용) -->
+    <springProfile name="dev">
+        <!-- root 레벨만 필요하면 공통 root 사용 가능 -->
+    </springProfile>
+
+    <!-- prod profile: stdout + JSON 파일 -->
+    <springProfile name="prod">
+        <property name="LOG_HOME" value="/home/backend/be11-team1/logging/logs/auth" />
+        <property name="DOMAIN_NAME" value="auth" />
+
+        <appender name="JSON_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+            <file>${LOG_HOME}/${DOMAIN_NAME}.log</file>
+            <encoder class="net.logstash.logback.encoder.LogstashEncoder" />
+            <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+                <fileNamePattern>${LOG_HOME}/${DOMAIN_NAME}.%d{yyyy-MM-dd}.log.gz</fileNamePattern>
+                <maxHistory>30</maxHistory>
+            </rollingPolicy>
+        </appender>
+
+        <!-- root에 JSON_FILE 추가, 기존 STDOUT 그대로 유지 -->
+        <root level="WARN">
+            <appender-ref ref="STDOUT"/>
+            <appender-ref ref="JSON_FILE"/>
+        </root>
+    </springProfile>
+
+</configuration>
