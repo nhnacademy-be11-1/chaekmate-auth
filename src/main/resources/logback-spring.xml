@@ -41,7 +41,7 @@
         </appender>
 
         <!-- root에 JSON_FILE 추가, 기존 STDOUT 그대로 유지 -->
-        <root level="WARN">
+        <root level="INFO">
             <appender-ref ref="STDOUT"/>
             <appender-ref ref="JSON_FILE"/>
         </root>
