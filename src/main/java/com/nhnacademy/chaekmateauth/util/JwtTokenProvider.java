@@ -193,7 +193,7 @@ public class JwtTokenProvider {
                 return false;
             }
 
-            return TYPE_REFRESH.equals(hashedTokenType);
+            return hashedRefresh.equals(hashedTokenType);
         } catch (AuthException e) {
             return false;
         }
