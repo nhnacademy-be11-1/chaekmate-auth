@@ -2,6 +2,12 @@ spring:
   application:
     name: chaekmate-auth
 
+  config:
+    import: "optional:configserver:"    # configserver import 활성화
+
+  cloud:
+    config:
+      enabled: false # Config server 사용 설정 기본 비활성화
 server:
   port: 9000
 
