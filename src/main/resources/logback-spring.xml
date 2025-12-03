@@ -35,7 +35,7 @@
         <property name="DOMAIN_NAME" value="auth"/>
 
         <appender name="JSON_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-            <file>${LOG_HOME}/${DOMAIN_NAME}.log</file>
+            <file>${LOG_HOME}/${DOMAIN_NAME}-${PID}.log</file>
             <encoder class="net.logstash.logback.encoder.LogstashEncoder">
                 <customFields>{"chaekmate-service":"auth"}</customFields>
                 <mdc>
