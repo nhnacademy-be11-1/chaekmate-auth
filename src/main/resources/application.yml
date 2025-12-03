@@ -2,6 +2,12 @@ spring:
   application:
     name: chaekmate-auth
 
+  rabbitmq:
+    host: ${RABBITMQ_HOST}
+    port: ${RABBITMQ_PORT}
+    username: ${RABBITMQ_USERNAME}
+    password: ${RABBITMQ_PASSWORD}
+
 server:
   port: 9000
 
@@ -33,7 +39,6 @@ management:
 info:
   instanceId: ${spring.application.name}:${server.port}
 
-
 jwt:
   secret: ${JWT_SECRET_KEY}
   access:
@@ -52,3 +57,13 @@ payco:
 dooray:
   webhook:
     url: ${DOORAY_WEBHOOK_URL}
+
+# RabbitMQ 설정
+rabbitmq:
+  exchange:
+    name: cart.exchange
+  queues:
+    login-queue-name: cart.login.queue
+    logout-queue-name: cart.logout.queue
+    login-routing-key: cart.login
+    logout-routing-key: cart.logout
