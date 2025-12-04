@@ -112,7 +112,7 @@ class AuthControllerTest {
         given(jwtTokenProvider.getRefreshTokenExpiration()).willReturn(604800L);
         willDoNothing().given(responseCookieUtil).addTokenCookies(any(HttpServletResponse.class), eq(tokenPair));
 
-        ResponseEntity<LoginResponse> result = authController.memberLogin(request, response);
+        ResponseEntity<LoginResponse> result = authController.memberLogin(request, null, response);
 
         assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(result.getBody()).isNotNull();
@@ -339,7 +339,7 @@ class AuthControllerTest {
         given(jwtTokenProvider.getRefreshTokenExpiration()).willReturn(604800L);
         willDoNothing().given(responseCookieUtil).addTokenCookies(any(HttpServletResponse.class), eq(tokenPair));
 
-        ResponseEntity<LoginResponse> result = authController.paycoAutoLogin(paycoId, response);
+        ResponseEntity<LoginResponse> result = authController.paycoAutoLogin(paycoId, null, response);
 
         assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(result.getBody()).isNotNull();
@@ -359,7 +359,7 @@ class AuthControllerTest {
         given(jwtTokenProvider.getRefreshTokenExpiration()).willReturn(604800L);
         willDoNothing().given(responseCookieUtil).addTokenCookies(any(HttpServletResponse.class), eq(tokenPair));
 
-        ResponseEntity<LoginResponse> result = authController.verifyDormantMember(loginId, request, response);
+        ResponseEntity<LoginResponse> result = authController.verifyDormantMember(loginId, request, null, response);
 
         assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(result.getBody()).isNotNull();
