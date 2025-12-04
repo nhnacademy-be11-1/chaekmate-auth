@@ -58,3 +58,11 @@ payco:
 dooray:
   webhook:
     url: ${DOORAY_WEBHOOK_URL}
+
+# Swagger 설정
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true

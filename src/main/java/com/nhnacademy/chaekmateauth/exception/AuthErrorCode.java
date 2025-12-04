@@ -16,6 +16,9 @@ public enum AuthErrorCode implements BaseErrorCode {
     DORMANT_MEMBER(HttpStatus.UNAUTHORIZED, "AUTH-401-5", "휴면 상태입니다. Dooray 메시지의 인증번호를 입력해주세요."),
     INVALID_VERIFICATION_CODE(HttpStatus.UNAUTHORIZED, "AUTH-401-6", "인증번호가 올바르지 않습니다."),
 
+    // 403
+    ACCESS_DENIED(HttpStatus.FORBIDDEN, "AUTH-403", "접근 권한이 없습니다."),
+
     // 404
     MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "AUTH-404", "회원을 찾을 수 없습니다."),
 
