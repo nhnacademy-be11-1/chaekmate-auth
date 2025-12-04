@@ -23,3 +23,7 @@ jwt:
     exp: 3600
   refresh:
     exp: 604800
+
+dooray:
+  webhook:
+    url: "https://test.com"
