@@ -17,6 +17,7 @@ import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.test.context.ActiveProfiles;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -95,5 +96,16 @@ class DoorayServiceTest {
 
         assertThat(result).isFalse();
         then(redisTemplate).should(never()).delete(anyString());
+    }
+
+    @Test
+    void 휴면_계정_인증번호_전송_실패_Dooray_전송_실패() {
+        Long memberId = 123L;
+        given(doorayClient.sendMessage(any(DoorayMessageRequest.class))).willThrow(new RuntimeException("Dooray 전송 실패"));
+
+        assertThatThrownBy(() -> doorayService.sendDormantVerificationCode(memberId))
+                .isInstanceOf(com.nhnacademy.chaekmateauth.exception.AuthException.class)
+                .extracting("errorCode")
+                .isEqualTo(com.nhnacademy.chaekmateauth.exception.AuthErrorCode.DOORAY_MESSAGE_SEND_FAILED);
     }
 }

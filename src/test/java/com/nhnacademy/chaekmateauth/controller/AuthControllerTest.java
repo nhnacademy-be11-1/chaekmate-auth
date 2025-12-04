@@ -115,6 +115,7 @@ class AuthControllerTest {
         ResponseEntity<LoginResponse> result = authController.memberLogin(request, response);
 
         assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(result.getBody()).isNotNull();
         assertThat(result.getBody().message()).isEqualTo("로그인 성공");
         then(responseCookieUtil).should().addTokenCookies(any(HttpServletResponse.class), eq(tokenPair));
         then(redisTemplate.opsForValue()).should().set(anyString(), eq("refresh-token"), any(Duration.class));
@@ -133,6 +134,7 @@ class AuthControllerTest {
         ResponseEntity<LoginResponse> result = authController.adminLogin(request, response);
 
         assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(result.getBody()).isNotNull();
         assertThat(result.getBody().message()).isEqualTo("관리자 로그인 성공");
         then(responseCookieUtil).should().addTokenCookies(any(HttpServletResponse.class), eq(tokenPair));
     }
@@ -148,6 +150,7 @@ class AuthControllerTest {
         ResponseEntity<MemberInfoResponse> result = authController.getMemberInfo(token);
 
         assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(result.getBody()).isNotNull();
         assertThat(result.getBody().memberId()).isEqualTo(1L);
         assertThat(result.getBody().name()).isEqualTo("테스트유저");
         assertThat(result.getBody().role()).isEqualTo("USER");
@@ -164,6 +167,7 @@ class AuthControllerTest {
         ResponseEntity<MemberInfoResponse> result = authController.getMemberInfo(token);
 
         assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(result.getBody()).isNotNull();
         assertThat(result.getBody().memberId()).isEqualTo(1L);
         assertThat(result.getBody().name()).isEqualTo("admin");
         assertThat(result.getBody().role()).isEqualTo("ADMIN");
@@ -194,6 +198,7 @@ class AuthControllerTest {
         ResponseEntity<LogoutResponse> result = authController.logout(accessToken, refreshToken);
 
         assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(result.getBody()).isNotNull();
         assertThat(result.getBody().message()).isEqualTo("로그아웃 성공");
         then(redisTemplate).should().delete("refresh:1");
     }
@@ -209,6 +214,7 @@ class AuthControllerTest {
         ResponseEntity<LogoutResponse> result = authController.logout(accessToken, refreshToken);
 
         assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(result.getBody()).isNotNull();
         assertThat(result.getBody().message()).isEqualTo("로그아웃 성공");
         then(redisTemplate).should().delete("refresh:1");
     }
@@ -224,6 +230,7 @@ class AuthControllerTest {
         ResponseEntity<LogoutResponse> result = authController.logout(accessToken, refreshToken);
 
         assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(result.getBody()).isNotNull();
         assertThat(result.getBody().message()).isEqualTo("로그아웃 성공");
         then(redisTemplate).should(never()).delete(anyString());
     }
@@ -239,6 +246,7 @@ class AuthControllerTest {
         ResponseEntity<LoginResponse> result = authController.refreshToken(refreshToken, response);
 
         assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(result.getBody()).isNotNull();
         assertThat(result.getBody().message()).isEqualTo("토큰 재발급 성공");
         then(responseCookieUtil).should().addTokenCookies(any(HttpServletResponse.class), eq(newTokenPair));
     }
@@ -252,6 +260,7 @@ class AuthControllerTest {
         ResponseEntity<PaycoAuthorizationResponse> result = authController.getPaycoAuthorizationUrl();
 
         assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(result.getBody()).isNotNull();
         assertThat(result.getBody().authorizationUrl()).isEqualTo(authorizationUrl);
     }
 
@@ -333,6 +342,7 @@ class AuthControllerTest {
         ResponseEntity<LoginResponse> result = authController.paycoAutoLogin(paycoId, response);
 
         assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(result.getBody()).isNotNull();
         assertThat(result.getBody().message()).isEqualTo("로그인 성공");
         then(responseCookieUtil).should().addTokenCookies(any(HttpServletResponse.class), eq(tokenPair));
         then(redisTemplate.opsForValue()).should().set(anyString(), eq("refresh-token"), any(Duration.class));
@@ -352,6 +362,7 @@ class AuthControllerTest {
         ResponseEntity<LoginResponse> result = authController.verifyDormantMember(loginId, request, response);
 
         assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(result.getBody()).isNotNull();
         assertThat(result.getBody().message()).isEqualTo("휴면 계정 해제 및 로그인 성공");
         then(responseCookieUtil).should().addTokenCookies(any(HttpServletResponse.class), eq(tokenPair));
         then(redisTemplate.opsForValue()).should().set(anyString(), eq("refresh-token"), any(Duration.class));
