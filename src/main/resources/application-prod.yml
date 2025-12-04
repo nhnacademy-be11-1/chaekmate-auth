@@ -12,3 +12,9 @@ spring:
         enabled: true                   # Eureka를 통해 Config Server 찾기
         service-id: chaekmate-config    # Eureka 서비스 이름
       fail-fast: true
+
+# Eureka Server URL
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URL_PROD}
