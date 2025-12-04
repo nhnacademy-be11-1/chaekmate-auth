@@ -1,42 +1,14 @@
-# Auth/Eureka Server Port (prod) : "배포설명" 확인
-
 spring:
-  data:
-    redis:
-      host: ${REDIS_HOST}
-      port: ${REDIS_PORT}
-      password: ${REDIS_PASSWORD}
-      database: ${REDIS_RANGE}
+  # Config 적용, 겹치는 설정 있으면 Config server에 의해 덮어씌워짐
+  config:
+    import: "optional:configserver:"    # configserver import 활성화
 
-  datasource:
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://${DB_HOST}:${DB_PORT}/${DB_NAME}?characterEncoding=UTF-8
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
-
-    # DBCP2 설정 (커넥션 풀)
-    type: org.apache.commons.dbcp2.BasicDataSource
-    dbcp2:
-      max-total: 10
-      min-idle: 2
-      validation-query: SELECT 1
-      test-on-borrow: true
-
-  jpa:
-    hibernate:
-      # create , update 금지 , prod 에선 None 고려
-      ddl-auto: validate # validate 로 수정 (전체 entity  수정 후)
-    show-sql: true
-    properties:
-      hibernate:
-        format_sql: false
-        use_sql_comments: false
-        highlight_sql: false
-    open-in-view: false
-    database-platform: org.hibernate.dialect.MySQLDialect
-
-# Eureka Server URL
-eureka:
-  client:
-    service-url:
-      defaultZone: ${EUREKA_URL_PROD}
+  cloud:
+    config:
+      enabled: true
+      profile: prod # config-repo의 prod 프로필 사용
+      label: main   # config-repo 의 main 브랜치 사용
+      discovery:
+        enabled: true                   # Eureka를 통해 Config Server 찾기
+        service-id: chaekmate-config    # Eureka 서비스 이름
+      fail-fast: true

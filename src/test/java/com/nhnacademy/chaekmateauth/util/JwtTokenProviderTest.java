@@ -1,11 +1,9 @@
-package com.nhnacademy.chaekmateauth;
+package com.nhnacademy.chaekmateauth.util;
 
 import com.nhnacademy.chaekmateauth.common.properties.JwtProperties;
 import com.nhnacademy.chaekmateauth.dto.TokenPair;
 import com.nhnacademy.chaekmateauth.exception.AuthErrorCode;
 import com.nhnacademy.chaekmateauth.exception.AuthException;
-import com.nhnacademy.chaekmateauth.util.JwtTokenProvider;
-import com.nhnacademy.chaekmateauth.util.MemberIdEncryptor;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -135,7 +133,6 @@ class JwtTokenProviderTest {
         Long memberId = 456L;
 
         String token = jwtTokenProvider.createRefreshToken(memberId, JwtTokenProvider.getTypeMember());
-        Claims claims = jwtTokenProvider.parseToken(token);
 
         // subject는 암호화된 값이므로 getMemberIdFromToken() 사용
         Long extractedMemberId = jwtTokenProvider.getMemberIdFromToken(token);
@@ -152,9 +149,6 @@ class JwtTokenProviderTest {
 
         assertThat(tokenPair.accessToken()).isNotEmpty();
         assertThat(tokenPair.refreshToken()).isNotEmpty();
-
-        Claims accessClaims = jwtTokenProvider.parseToken(tokenPair.accessToken());
-        Claims refreshClaims = jwtTokenProvider.parseToken(tokenPair.refreshToken());
 
         // subject는 암호화된 값이므로 getMemberIdFromToken() 사용
         Long extractedAccessMemberId = jwtTokenProvider.getMemberIdFromToken(tokenPair.accessToken());
@@ -300,5 +294,51 @@ class JwtTokenProviderTest {
         Long memberId = 123L;
         String accessTokenStr = jwtTokenProvider.createAccessToken(memberId, JwtTokenProvider.getTypeMember());
         assertThat(jwtTokenProvider.validateRefreshToken(accessTokenStr)).isFalse();
+    }
+
+    @Test
+    void Admin_토큰_생성_성공() {
+        Long memberId = 999L;
+        String token = jwtTokenProvider.createAccessToken(memberId, JwtTokenProvider.getTypeAdmin());
+
+        assertThat(token).isNotNull().contains(".");
+        Long extractedMemberId = jwtTokenProvider.getMemberIdFromToken(token);
+        String userType = jwtTokenProvider.getUserTypeFromToken(token);
+        assertThat(extractedMemberId).isEqualTo(memberId);
+        assertThat(userType).isEqualTo(JwtTokenProvider.getTypeAdmin());
+    }
+
+    @Test
+    void 토큰에서_userType_추출_성공_Member() {
+        Long memberId = 123L;
+        String token = jwtTokenProvider.createAccessToken(memberId, JwtTokenProvider.getTypeMember());
+
+        String userType = jwtTokenProvider.getUserTypeFromToken(token);
+
+        assertThat(userType).isEqualTo(JwtTokenProvider.getTypeMember());
+    }
+
+    @Test
+    void 토큰에서_userType_추출_성공_Admin() {
+        Long memberId = 999L;
+        String token = jwtTokenProvider.createAccessToken(memberId, JwtTokenProvider.getTypeAdmin());
+
+        String userType = jwtTokenProvider.getUserTypeFromToken(token);
+
+        assertThat(userType).isEqualTo(JwtTokenProvider.getTypeAdmin());
+    }
+
+    @Test
+    void Access_토큰_만료_시간_조회_성공() {
+        Long expiration = jwtTokenProvider.getAccessTokenExpiration();
+
+        assertThat(expiration).isEqualTo(DEFAULT_ACCESS_EXPIRATION);
+    }
+
+    @Test
+    void Refresh_토큰_만료_시간_조회_성공() {
+        Long expiration = jwtTokenProvider.getRefreshTokenExpiration();
+
+        assertThat(expiration).isEqualTo(DEFAULT_REFRESH_EXPIRATION);
     }
 }
