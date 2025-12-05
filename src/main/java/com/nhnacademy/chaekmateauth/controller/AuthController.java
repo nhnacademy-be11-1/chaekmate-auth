@@ -1,5 +1,7 @@
 package com.nhnacademy.chaekmateauth.controller;
 
+import com.nhnacademy.chaekmateauth.event.LoginSuccessEvent;
+import com.nhnacademy.chaekmateauth.event.LogoutEvent;
 import com.nhnacademy.chaekmateauth.dto.TokenPair;
 import com.nhnacademy.chaekmateauth.dto.request.DormantVerificationRequest;
 import com.nhnacademy.chaekmateauth.dto.request.LoginRequest;
@@ -21,8 +23,10 @@ import com.nhnacademy.chaekmateauth.util.ResponseCookieUtil;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import java.time.Duration;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CookieValue;
@@ -44,14 +48,22 @@ public class AuthController {
     private final AuthService authService;
     private final JwtTokenProvider jwtTokenProvider;
     private final ResponseCookieUtil responseCookieUtil;
-    private static final String REFRESH_TOKEN_PREFIX = "refresh";
+    private final RabbitTemplate rabbitTemplate;
     private final RedisTemplate<String, String> redisTemplate;
     private final MemberRepository memberRepository;
     private final AdminRepository adminRepository;
 
+    private static final String REFRESH_TOKEN_PREFIX = "refresh";
+
+    // RabbitMQ Exchange & Routing Key
+    private static final String CART_EXCHANGE = "cart.exchange";
+    private static final String LOGIN_ROUTING_KEY = "cart.login";
+    private static final String LOGOUT_ROUTING_KEY = "cart.logout";
+
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> memberLogin(@Valid @RequestBody LoginRequest request,
-                                               HttpServletResponse response) {
+                                                     @CookieValue(value = "Guest-Id", required = false) String guestId,
+                                                     HttpServletResponse response) {
         TokenPair tokenPair = authService.memberLogin(request);
 
         responseCookieUtil.addTokenCookies(response, tokenPair);
@@ -62,6 +74,9 @@ public class AuthController {
         long refreshExpirationMillis = jwtTokenProvider.getRefreshTokenExpiration() * 1000;
         redisTemplate.opsForValue().set(redisKey, tokenPair.refreshToken(),
                 Duration.ofMillis(refreshExpirationMillis));
+
+        // 회원 로그인 이벤트 발행
+        this.publishLoginEvent(memberId, guestId);
 
         return ResponseEntity.ok(new LoginResponse("로그인 성공"));
     }
@@ -146,6 +161,10 @@ public class AuthController {
             String redisKey = REFRESH_TOKEN_PREFIX + ":" + memberId;
             redisTemplate.delete(redisKey);
         }
+
+        // 로그아웃 이벤트 발행
+        this.publishLogoutEvent(memberId);
+
         return ResponseEntity.ok(new LogoutResponse("로그아웃 성공"));
     }
 
@@ -216,6 +235,7 @@ public class AuthController {
      */
     @PostMapping("/payco/login")
     public ResponseEntity<LoginResponse> paycoAutoLogin(@RequestParam("paycoId") String paycoId,
+                                                        @CookieValue(value = "Guest-Id", required = false) String guestId,
                                                         HttpServletResponse response) {
         TokenPair tokenPair = authService.paycoAutoLogin(paycoId);
 
@@ -228,6 +248,9 @@ public class AuthController {
         redisTemplate.opsForValue().set(redisKey, tokenPair.refreshToken(),
                 Duration.ofMillis(refreshExpirationMillis));
 
+        // Payco 로그인 이벤트 발행
+        this.publishLoginEvent(memberId, guestId);
+
         return ResponseEntity.ok(new LoginResponse("로그인 성공"));
     }
 
@@ -235,6 +258,7 @@ public class AuthController {
     public ResponseEntity<LoginResponse> verifyDormantMember(
             @RequestParam("loginId") String loginId,
             @Valid @RequestBody DormantVerificationRequest request,
+            @CookieValue(value = "Guest-Id", required = false) String guestId,
             HttpServletResponse response) {
 
         TokenPair tokenPair = authService.activateDormantMember(loginId, request.verificationCode());
@@ -249,6 +273,39 @@ public class AuthController {
         redisTemplate.opsForValue().set(redisKey, tokenPair.refreshToken(),
                 Duration.ofMillis(refreshExpirationMillis));
 
+        // 휴면 해제 후 로그인 이벤트 발행
+        this.publishLoginEvent(memberId, guestId);
+
         return ResponseEntity.ok(new LoginResponse("휴면 계정 해제 및 로그인 성공"));
+    }
+
+    // 로그인 이벤트 발행
+    private void publishLoginEvent(Long memberId, String guestId) {
+        // guestId가 없으면 이벤트 발행하지 않음
+        if (Objects.isNull(guestId) || guestId.trim().isEmpty()) {
+            log.info("비회원 장바구니 없음. 로그인 이벤트 발행 생략: memberId={}", memberId);
+            return;
+        }
+
+        try {
+            LoginSuccessEvent event = new LoginSuccessEvent(memberId, guestId);
+            rabbitTemplate.convertAndSend(CART_EXCHANGE, LOGIN_ROUTING_KEY, event);
+            log.info("로그인 이벤트 발행 완료: memberId={}, guestId={}", memberId, guestId);
+        } catch (Exception e) {
+            // 이벤트 발행 실패해도 로그인은 성공
+            log.error("로그인 이벤트 발행 실패: memberId={}, error={}", memberId, e.getMessage(), e);
+        }
+    }
+
+    // 로그아웃 이벤트 발행
+    private void publishLogoutEvent(Long memberId) {
+        try {
+            LogoutEvent event = new LogoutEvent(memberId);
+            rabbitTemplate.convertAndSend(CART_EXCHANGE, LOGOUT_ROUTING_KEY, event);
+            log.info("로그아웃 이벤트 발행 완료: memberId={}", memberId);
+        } catch (Exception e) {
+            // 이벤트 발행 실패해도 로그아웃은 성공
+            log.error("로그아웃 이벤트 발행 실패: memberId={}, error={}", memberId, e.getMessage(), e);
+        }
     }
 }

@@ -3,6 +3,8 @@ package com.nhnacademy.chaekmateauth.service;
 import com.nhnacademy.chaekmateauth.client.DoorayClient;
 import com.nhnacademy.chaekmateauth.dto.request.DoorayAttachment;
 import com.nhnacademy.chaekmateauth.dto.request.DoorayMessageRequest;
+import com.nhnacademy.chaekmateauth.exception.AuthErrorCode;
+import com.nhnacademy.chaekmateauth.exception.AuthException;
 import java.security.SecureRandom;
 import java.time.Duration;
 import java.util.List;
@@ -51,7 +53,7 @@ public class DoorayService {
             log.info("휴면 계정 해제 인증번호 전송 완료: memberId={}", memberId);
         } catch (Exception e) {
             log.error("Dooray 메시지 전송 실패: memberId={}", memberId, e);
-            throw new RuntimeException("인증번호 전송에 실패했습니다.", e);
+            throw new AuthException(AuthErrorCode.DOORAY_MESSAGE_SEND_FAILED, e);
         }
 
         return verificationCode;

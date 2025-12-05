@@ -2,6 +2,18 @@ spring:
   application:
     name: chaekmate-auth
 
+  rabbitmq:
+    host: ${RABBITMQ_HOST}
+    port: ${RABBITMQ_PORT}
+    username: ${RABBITMQ_USERNAME}
+    password: ${RABBITMQ_PASSWORD}
+
+  config:
+    import: "optional:configserver:"    # configserver import 활성화
+
+  cloud:
+    config:
+      enabled: false # Config server 사용 설정 기본 비활성화
 server:
   port: 9000
 
@@ -16,14 +28,25 @@ eureka:
 
   instance:
     prefer-ip-address: true
-    lease-renewal-interval-in-seconds: 5
-    lease-expiration-duration-in-seconds: 10
+    lease-renewal-interval-in-seconds: 30
+    lease-expiration-duration-in-seconds: 90
 
 management:
   endpoints:
     web:
       exposure:
-        include: health, info
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+    shutdown:
+      access: unrestricted
+  info:
+    env:
+      enabled: true
+info:
+  instanceId: ${spring.application.name}:${server.port}
+
 jwt:
   secret: ${JWT_SECRET_KEY}
   access:
@@ -42,3 +65,20 @@ payco:
 dooray:
   webhook:
     url: ${DOORAY_WEBHOOK_URL}
+
+# RabbitMQ 설정
+rabbitmq:
+  exchange:
+    name: cart.exchange
+  queues:
+    login-queue-name: cart.login.queue
+    logout-queue-name: cart.logout.queue
+    login-routing-key: cart.login
+    logout-routing-key: cart.logout
+# Swagger 설정
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
